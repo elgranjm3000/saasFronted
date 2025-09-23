@@ -1,14 +1,23 @@
 'use client'
 import React, { useState } from 'react';
 import { Eye, EyeOff, Building2, User, Lock } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuthProvider';
+import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const [error, setError] = useState('');
+
   const [formData, setFormData] = useState({
     username: '',
     password: '',
     company_tax_id: '',
   });
+
+   const { login } = useAuth();
+  const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -20,7 +29,18 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Login:', formData);
-    // Aquí conectarás con tu API
+     try {
+      await login(formData);
+      router.push('/dashboard');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(
+        error.response?.data?.message || 
+        'Error al iniciar sesión. Verifica tus credenciales.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
