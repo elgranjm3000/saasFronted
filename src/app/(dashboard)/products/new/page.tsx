@@ -112,19 +112,16 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
 
   if (loading) {
     return (
-      <DashboardLayout>
         <div className="p-6 lg:p-8">
           <div className="flex items-center justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         </div>
-      </DashboardLayout>
     );
   }
 
   if (error || !product) {
     return (
-      <DashboardLayout>
         <div className="p-6 lg:p-8">
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-12 text-center">
             <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
@@ -141,7 +138,6 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
             </Link>
           </div>
         </div>
-      </DashboardLayout>
     );
   }
 
@@ -149,7 +145,6 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
   const StockIcon = stockStatus.icon;
 
   return (
-    <DashboardLayout>
       <div className="p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
@@ -382,7 +377,6 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
           </div>
         </div>
       </div>
-    </DashboardLayout>
   );
 };
 
