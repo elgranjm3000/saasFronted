@@ -1,3 +1,4 @@
+'use client'
 import React, { useState } from 'react';
 import { 
   BarChart3, 
@@ -21,10 +22,12 @@ import {
   DollarSign,
   AlertTriangle
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuthProvider';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard', active: true },
@@ -81,9 +84,12 @@ const DashboardLayout = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+    <div className="flex h-screen bg-slate-50">
+      {/* Sidebar - Fixed */}
+      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } lg:translate-x-0 lg:static lg:inset-0`}>
+        {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-slate-200">
           <div className="flex items-center">
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
@@ -99,7 +105,8 @@ const DashboardLayout = () => {
           </button>
         </div>
         
-        <nav className="mt-8 px-4">
+        {/* Navigation */}
+        <nav className="flex-1 mt-8 px-4 pb-20 overflow-y-auto">
           <div className="space-y-2">
             {menuItems.map((item, index) => (
               <a
@@ -126,7 +133,9 @@ const DashboardLayout = () => {
                 <Building2 className="w-5 h-5 text-slate-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-slate-900">Mi Empresa S.A.</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {user?.company?.name || 'Mi Empresa S.A.'}
+                </p>
                 <p className="text-xs text-slate-500">Plan Professional</p>
               </div>
             </div>
@@ -134,10 +143,10 @@ const DashboardLayout = () => {
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="lg:pl-64">
+      {/* Main Content - Properly offset for sidebar */}
+      <div className="flex-1 flex flex-col lg:ml-64">
         {/* Top Header */}
-        <div className="bg-white shadow-sm border-b border-slate-200">
+        <header className="bg-white shadow-sm border-b border-slate-200 relative z-40">
           <div className="flex items-center justify-between h-16 px-6">
             <div className="flex items-center">
               <button
@@ -177,12 +186,14 @@ const DashboardLayout = () => {
                   <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
                     <User className="w-4 h-4 text-white" />
                   </div>
-                  <span className="hidden md:block font-medium text-slate-700">Admin User</span>
+                  <span className="hidden md:block font-medium text-slate-700">
+                    {user?.username || 'Admin User'}
+                  </span>
                   <ChevronDown className="w-4 h-4 text-slate-400" />
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
                     <a href="#" className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
                       Mi Perfil
                     </a>
@@ -190,149 +201,157 @@ const DashboardLayout = () => {
                       Configuración
                     </a>
                     <hr className="my-1 border-slate-200" />
-                    <a href="#" className="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <button
+                      onClick={() => {
+                        setUserMenuOpen(false);
+                        logout();
+                      }}
+                      className="w-full text-left block px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                    >
                       <div className="flex items-center">
                         <LogOut className="w-4 h-4 mr-2" />
                         Cerrar Sesión
                       </div>
-                    </a>
+                    </button>
                   </div>
                 )}
               </div>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Dashboard Content */}
-        <div className="p-6">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h2 className="text-3xl font-bold text-slate-900 mb-2">
-              ¡Bienvenido de vuelta!
-            </h2>
-            <p className="text-slate-600">
-              Aquí tienes un resumen de la actividad de tu empresa hoy.
-            </p>
-          </div>
+        {/* Dashboard Content - Scrollable */}
+        <main className="flex-1 overflow-y-auto bg-slate-50">
+          <div className="p-6">
+            {/* Welcome Section */}
+            <div className="mb-8">
+              <h2 className="text-3xl font-bold text-slate-900 mb-2">
+                ¡Bienvenido de vuelta{user?.username ? `, ${user.username}` : ''}!
+              </h2>
+              <p className="text-slate-600">
+                Aquí tienes un resumen de la actividad de tu empresa hoy.
+              </p>
+            </div>
 
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {statsCards.map((card, index) => (
-              <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-slate-600 mb-1">
-                      {card.title}
-                    </p>
-                    <p className="text-2xl font-bold text-slate-900">
-                      {card.value}
-                    </p>
-                    <div className="flex items-center mt-2">
-                      <TrendingUp className={`w-4 h-4 mr-1 ${
-                        card.changeType === 'positive' ? 'text-green-500' : 
-                        card.changeType === 'negative' ? 'text-red-500' : 'text-orange-500'
-                      }`} />
-                      <span className={`text-sm font-medium ${
-                        card.changeType === 'positive' ? 'text-green-600' : 
-                        card.changeType === 'negative' ? 'text-red-600' : 'text-orange-600'
-                      }`}>
-                        {card.change}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center`}>
-                    <card.icon className="w-6 h-6 text-white" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Recent Activity */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="p-6 border-b border-slate-200">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Actividad Reciente
-                  </h3>
-                </div>
-                <div className="p-6">
-                  <div className="space-y-4">
-                    {recentActivity.map((activity) => (
-                      <div key={activity.id} className="flex items-start space-x-3">
-                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-900">
-                            {activity.description}
-                          </p>
-                          <p className="text-xs text-slate-500 mt-1">
-                            {activity.time}
-                          </p>
-                        </div>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              {statsCards.map((card, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600 mb-1">
+                        {card.title}
+                      </p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {card.value}
+                      </p>
+                      <div className="flex items-center mt-2">
+                        <TrendingUp className={`w-4 h-4 mr-1 ${
+                          card.changeType === 'positive' ? 'text-green-500' : 
+                          card.changeType === 'negative' ? 'text-red-500' : 'text-orange-500'
+                        }`} />
+                        <span className={`text-sm font-medium ${
+                          card.changeType === 'positive' ? 'text-green-600' : 
+                          card.changeType === 'negative' ? 'text-red-600' : 'text-orange-600'
+                        }`}>
+                          {card.change}
+                        </span>
                       </div>
-                    ))}
+                    </div>
+                    <div className={`w-12 h-12 ${card.color} rounded-lg flex items-center justify-center`}>
+                      <card.icon className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Recent Activity */}
+              <div className="lg:col-span-2">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                  <div className="p-6 border-b border-slate-200">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Actividad Reciente
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="space-y-4">
+                      {recentActivity.map((activity) => (
+                        <div key={activity.id} className="flex items-start space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-slate-900">
+                              {activity.description}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-1">
+                              {activity.time}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Quick Actions */}
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="p-6 border-b border-slate-200">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Acciones Rápidas
-                  </h3>
+              {/* Quick Actions */}
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                  <div className="p-6 border-b border-slate-200">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Acciones Rápidas
+                    </h3>
+                  </div>
+                  <div className="p-6 space-y-3">
+                    <button className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                      <FileText className="w-4 h-4 mr-2" />
+                      Nueva Factura
+                    </button>
+                    <button className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                      <Package className="w-4 h-4 mr-2" />
+                      Agregar Producto
+                    </button>
+                    <button className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                      <Users className="w-4 h-4 mr-2" />
+                      Nuevo Cliente
+                    </button>
+                  </div>
                 </div>
-                <div className="p-6 space-y-3">
-                  <button className="w-full flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Nueva Factura
-                  </button>
-                  <button className="w-full flex items-center justify-center px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    <Package className="w-4 h-4 mr-2" />
-                    Agregar Producto
-                  </button>
-                  <button className="w-full flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
-                    <Users className="w-4 h-4 mr-2" />
-                    Nuevo Cliente
-                  </button>
-                </div>
-              </div>
 
-              {/* System Status */}
-              <div className="bg-white rounded-xl shadow-sm border border-slate-200">
-                <div className="p-6 border-b border-slate-200">
-                  <h3 className="text-lg font-semibold text-slate-900">
-                    Estado del Sistema
-                  </h3>
-                </div>
-                <div className="p-6">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Base de Datos</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        Conectado
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">API Status</span>
-                      <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                        Operativo
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-slate-600">Último Backup</span>
-                      <span className="text-xs text-slate-500">Hace 2 horas</span>
+                {/* System Status */}
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200">
+                  <div className="p-6 border-b border-slate-200">
+                    <h3 className="text-lg font-semibold text-slate-900">
+                      Estado del Sistema
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Base de Datos</span>
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                          Conectado
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">API Status</span>
+                        <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                          Operativo
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-slate-600">Último Backup</span>
+                        <span className="text-xs text-slate-500">Hace 2 horas</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </main>
       </div>
 
       {/* Mobile sidebar overlay */}
