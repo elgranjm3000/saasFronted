@@ -39,8 +39,21 @@ export const useAuth = () => {
 
 const setCookie = (name: string, value: string, days: number = 7) => {
   if (typeof window !== 'undefined') {
-    const expires = new Date(Date.now() + days * 864e5).toUTCString()
-    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; Secure; SameSite=Strict`
+    const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString()
+    
+    // ✅ En desarrollo: NO usar Secure (HTTP)
+    // ✅ En producción: usar Secure (HTTPS)
+    const isProduction = process.env.NODE_ENV === 'production'
+    const secure = isProduction ? '; Secure' : ''
+    
+    const cookieString = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/${secure}; SameSite=Lax`
+    
+    console.log(`🍪 [setCookie] ${name} = ${cookieString}`)
+    document.cookie = cookieString
+    
+    // Verificar que se seteo
+    const verify = getCookie(name)
+    console.log(`🍪 [setCookie] Verification - ${name} in cookie: ${verify ? 'YES ✅' : 'NO ❌'}`)
   }
 }
 
@@ -69,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       try {
         const token = getCookie('access_token') || localStorage.getItem('access_token')
-        console.log('AuthProvider: Initializing, token exists:', !!token)
+        console.log('🔍 [AuthProvider] Initializing, token exists:', !!token)
         
         if (token) {
           // Sincronizar token entre localStorage y cookies
@@ -79,7 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Verificar token con la API
           const response = await authAPI.getMe()
-          console.log('AuthProvider: User authenticated:', response.data.username)
+          console.log('✅ [AuthProvider] User authenticated:', response.data.username)
           setUser(response.data)
           setIsAuthenticated(true)
           
@@ -88,12 +101,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setCookie('user_data', JSON.stringify(response.data))
           }
         } else {
-          console.log('AuthProvider: No token found')
+          console.log('ℹ️ [AuthProvider] No token found')
           setIsAuthenticated(false)
         }
       } catch (error) {
-        console.error('AuthProvider: Error initializing auth:', error)
-        // Limpiar todo si hay error
+        console.error('❌ [AuthProvider] Error initializing auth:', error)
         deleteCookie('access_token')
         deleteCookie('user_data')
         localStorage.removeItem('access_token')
@@ -105,14 +117,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     initAuth()
-  }, []) // ← Sin dependencias: se ejecuta UNA SOLA VEZ al montar
+  }, [])
 
   const login = async (credentials: any) => {
     try {
-      console.log('AuthProvider: Attempting login...')
+      console.log('🔐 [AuthProvider] Attempting login...')
       const response = await authAPI.login(credentials)
       
       const { access_token, user: userData } = response.data
+      
+      console.log('✅ [AuthProvider] Login response received')
+      console.log('📝 [AuthProvider] Setting cookies and localStorage...')
       
       // Guardar en cookies y localStorage
       setCookie('access_token', access_token, 7)
@@ -120,18 +135,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem('access_token', access_token)
       localStorage.setItem('user_data', JSON.stringify(userData))
       
+      // Verificar que se seteo
+      console.log('🍪 [AuthProvider] Final verification:')
+      console.log('   - Cookie access_token:', getCookie('access_token') ? '✅ YES' : '❌ NO')
+      console.log('   - Cookie user_data:', getCookie('user_data') ? '✅ YES' : '❌ NO')
+      console.log('   - localStorage access_token:', localStorage.getItem('access_token') ? '✅ YES' : '❌ NO')
+      
       setUser(userData)
       setIsAuthenticated(true)
       
-      console.log('AuthProvider: Login successful')
+      console.log('✅ [AuthProvider] Login successful')
     } catch (error) {
-      console.error('AuthProvider: Login error:', error)
+      console.error('❌ [AuthProvider] Login error:', error)
       throw error
     }
   }
 
   const logout = () => {
-    console.log('AuthProvider: Logging out...')
+    console.log('🚪 [AuthProvider] Logging out...')
     deleteCookie('access_token')
     deleteCookie('user_data')
     localStorage.removeItem('access_token')
@@ -139,7 +160,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setUser(null)
     setIsAuthenticated(false)
-    // ← SIN router.push() - el middleware se encargará
   }
 
   const value = {
