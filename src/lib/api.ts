@@ -9,6 +9,9 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  // ✅ IMPORTANTE: Permitir que Axios envíe cookies con cada request
+  // Esto es necesario para que el servidor reciba el cookie HTTP-only
+  withCredentials: true,
 });
 
 const getCookie = (name: string): string | null => {
@@ -21,13 +24,20 @@ const getCookie = (name: string): string | null => {
 }
 
 // Interceptor para incluir el token de autorización
+// Nota: Si el token está en cookies HTTP-only, Axios lo enviará automáticamente
+// Este interceptor es para tokens en localStorage como fallback
 apiClient.interceptors.request.use(
   (config) => {
-    const token = getCookie('access_token') || localStorage.getItem('access_token')
+    // Primero intentar obtener del localStorage (como fallback)
+    const tokenFromStorage = localStorage.getItem('access_token')
     
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (tokenFromStorage) {
+      console.log('🔐 Request: Using token from localStorage')
+      config.headers.Authorization = `Bearer ${tokenFromStorage}`;
+    } else {
+      console.log('🔐 Request: Token will be sent via HTTP-only cookies (withCredentials: true)')
     }
+    
     return config;
   },
   (error) => {
@@ -40,9 +50,20 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
+      console.error('❌ Response: 401 Unauthorized - Token may be invalid')
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_data');
-      window.location.href = '/login';
+      
+      // Limpiar cookies
+      if (typeof window !== 'undefined') {
+        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+        document.cookie = 'user_data=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
+      }
+      
+      // Redirigir a login
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

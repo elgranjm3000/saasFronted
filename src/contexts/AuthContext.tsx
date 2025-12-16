@@ -1,6 +1,5 @@
 'use client'
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
 import { authAPI } from '@/lib/api'
 
 interface User {
@@ -64,39 +63,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [hasInitialized, setHasInitialized] = useState(false)
-  const router = useRouter()
-  const pathname = usePathname()
-
-  const publicPaths = ['/login', '/register', '/']
 
   // Inicializar autenticación UNA SOLA VEZ
   useEffect(() => {
     const initAuth = async () => {
       try {
-        let token = getCookie('access_token') || localStorage.getItem('access_token')
-        console.log('Initializing auth, token from cookie/localStorage:', token)
+        const token = getCookie('access_token') || localStorage.getItem('access_token')
+        console.log('AuthProvider: Initializing, token exists:', !!token)
+        
         if (token) {
-          console.log('Token found, verifying...')
-          
+          // Sincronizar token entre localStorage y cookies
           if (!getCookie('access_token') && localStorage.getItem('access_token')) {
             setCookie('access_token', token)
           }
           
+          // Verificar token con la API
           const response = await authAPI.getMe()
-          console.log('User authenticated:', response.data.username)
+          console.log('AuthProvider: User authenticated:', response.data.username)
           setUser(response.data)
           setIsAuthenticated(true)
           
+          // Guardar datos en cookies
           if (!getCookie('user_data')) {
             setCookie('user_data', JSON.stringify(response.data))
           }
         } else {
-          console.log('No token found')
+          console.log('AuthProvider: No token found')
           setIsAuthenticated(false)
         }
       } catch (error) {
-        console.error('Error initializing auth:', error)
+        console.error('AuthProvider: Error initializing auth:', error)
+        // Limpiar todo si hay error
         deleteCookie('access_token')
         deleteCookie('user_data')
         localStorage.removeItem('access_token')
@@ -104,39 +101,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false)
       } finally {
         setIsLoading(false)
-        setHasInitialized(true)
       }
     }
 
     initAuth()
-  }, []) // ← Dependencias vacías: se ejecuta UNA SOLA VEZ
-
-  // Manejar redirecciones DESPUÉS de inicializar
-  useEffect(() => {
-    if (!hasInitialized) return // Esperar a que se inicialice
-
-    console.log(`Pathname changed to: ${pathname}, Authenticated: ${isAuthenticated}`)
-
-    // Si no autenticado y no está en ruta pública → ir a login
-    if (!isAuthenticated && !publicPaths.includes(pathname)) {
-      console.log('Not authenticated, redirecting to login')
-      router.push('/login')
-    }
-
-    // Si autenticado y está en ruta pública → ir a dashboard
-    if (isAuthenticated && publicPaths.includes(pathname)) {
-      console.log('Authenticated on public path, redirecting to dashboard')
-      router.push('/dashboard')
-    }
-  }, [pathname, isAuthenticated, hasInitialized]) // ← Dependencias correctas
+  }, []) // ← Sin dependencias: se ejecuta UNA SOLA VEZ al montar
 
   const login = async (credentials: any) => {
     try {
-      console.log('Attempting login...')
+      console.log('AuthProvider: Attempting login...')
       const response = await authAPI.login(credentials)
       
       const { access_token, user: userData } = response.data
       
+      // Guardar en cookies y localStorage
       setCookie('access_token', access_token, 7)
       setCookie('user_data', JSON.stringify(userData), 7)
       localStorage.setItem('access_token', access_token)
@@ -145,15 +123,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(userData)
       setIsAuthenticated(true)
       
-      console.log('Login successful')
+      console.log('AuthProvider: Login successful')
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('AuthProvider: Login error:', error)
       throw error
     }
   }
 
   const logout = () => {
-    console.log('Logging out...')
+    console.log('AuthProvider: Logging out...')
     deleteCookie('access_token')
     deleteCookie('user_data')
     localStorage.removeItem('access_token')
@@ -161,7 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setUser(null)
     setIsAuthenticated(false)
-    router.push('/login')
+    // ← SIN router.push() - el middleware se encargará
   }
 
   const value = {

@@ -1,7 +1,8 @@
 'use client'
 import React, { useState } from 'react';
 import { Eye, EyeOff, Building2, User, Lock, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuthProvider';
+//import { useAuth } from '@/hooks/useAuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {

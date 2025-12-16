@@ -22,7 +22,7 @@ import {
   Home,
   ArrowUpRight
 } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuthProvider';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
