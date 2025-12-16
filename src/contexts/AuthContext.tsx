@@ -1,6 +1,8 @@
 'use client'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { authAPI } from '@/lib/api'
+import { useRouter, usePathname } from 'next/navigation'
+
 
 interface User {
   id: number;
@@ -76,7 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-
+  const router = useRouter()
+  const pathname = usePathname()
+  
   // Inicializar autenticación UNA SOLA VEZ
   useEffect(() => {
     const initAuth = async () => {
@@ -160,6 +164,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     setUser(null)
     setIsAuthenticated(false)
+    router.push('/login')
   }
 
   const value = {
