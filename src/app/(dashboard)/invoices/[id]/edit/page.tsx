@@ -16,7 +16,6 @@ import {
   DollarSign,
   Percent,
   Package,
-  X,
   Search,
   ChevronDown
 } from 'lucide-react';
@@ -64,7 +63,7 @@ interface Warehouse {
   location: string;
 }
 
-const InvoiceFormPage = () => {
+const InvoiceEditPage = () => {
   const [formData, setFormData] = useState<InvoiceFormData>({
     customer_id: null,
     warehouse_id: null,
@@ -93,18 +92,16 @@ const InvoiceFormPage = () => {
 
   const router = useRouter();
   const params = useParams();
-
-  const isEdit = params?.id && params.id !== 'new';
-  const invoiceId = isEdit ? Number(params.id) : null;
+  const invoiceId = Number(params.id);
 
   useEffect(() => {
     fetchCustomers();
     fetchWarehouses();
 
-    if (isEdit && invoiceId) {
+    if (invoiceId) {
       fetchInvoice();
     }
-  }, [isEdit, invoiceId]);
+  }, [invoiceId]);
 
   // Fetch products for selected warehouse
   useEffect(() => {
@@ -168,11 +165,12 @@ const InvoiceFormPage = () => {
 
   const fetchInvoice = async () => {
     if (!invoiceId) return;
+
     try {
       setInitialLoading(true);
       const response = await invoicesAPI.getById(invoiceId);
       const invoice = response.data;
-      
+
       setFormData({
         customer_id: invoice.customer_id,
         warehouse_id: invoice.warehouse_id || null,
@@ -184,7 +182,7 @@ const InvoiceFormPage = () => {
         notes: invoice.notes || '',
         payment_terms: invoice.payment_terms || '30'
       });
-      
+
       const customer = customers.find(c => c.id === invoice.customer_id);
       if (customer) {
         setSelectedCustomerName(customer.name);
@@ -318,25 +316,7 @@ const InvoiceFormPage = () => {
         payment_terms: formData.payment_terms
       };
 
-      // LOG DETALLADO - Ver exactamente qué se envía
-      console.log('=== DATOS SIENDO ENVIADOS ===');
-      console.log('customer_id:', submitData.customer_id, `(tipo: ${typeof submitData.customer_id})`);
-      console.log('warehouse_id:', submitData.warehouse_id, `(tipo: ${typeof submitData.warehouse_id})`);
-      console.log('status:', submitData.status, `(tipo: ${typeof submitData.status})`);
-      console.log('discount:', submitData.discount, `(tipo: ${typeof submitData.discount})`);
-      console.log('date:', submitData.date, `(tipo: ${typeof submitData.date})`);
-      console.log('due_date:', submitData.due_date, `(tipo: ${typeof submitData.due_date})`);
-      console.log('items:', submitData.items, `(cantidad: ${submitData.items.length})`);
-      console.log('notes:', submitData.notes, `(tipo: ${typeof submitData.notes})`);
-      console.log('payment_terms:', submitData.payment_terms, `(tipo: ${typeof submitData.payment_terms})`);
-      console.log('JSON completo:', JSON.stringify(submitData, null, 2));
-      console.log('============================');
-
-      if (isEdit && invoiceId) {
-        await invoicesAPI.update(invoiceId, submitData);
-      } else {
-        await invoicesAPI.create(submitData);
-      }
+      await invoicesAPI.update(invoiceId, submitData);
 
       setSuccess(true);
 
@@ -353,8 +333,9 @@ const InvoiceFormPage = () => {
       }
 
       setTimeout(() => {
-        router.push('/invoices');
+        router.push(`/invoices/${invoiceId}`);
       }, 1500);
+
     } catch (error: any) {
       console.error('Error saving invoice:', error);
       setErrors({ general: extractErrorMessage(error) });
@@ -406,22 +387,18 @@ const InvoiceFormPage = () => {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              href="/invoices"
-              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">
-                {isEdit ? 'Editar Factura' : 'Nueva Factura'}
-              </h1>
-              <p className="text-gray-500 font-light">
-                {isEdit ? 'Modifica la información de la factura' : 'Crea una nueva factura de venta'}
-              </p>
-            </div>
+        <div className="flex items-center space-x-4 mb-6">
+          <Link
+            href={`/invoices/${invoiceId}`}
+            className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-3xl font-light text-gray-900 mb-2">Editar Factura</h1>
+            <p className="text-gray-500 font-light">
+              Modifica la información de la factura
+            </p>
           </div>
         </div>
       </div>
@@ -432,7 +409,7 @@ const InvoiceFormPage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              {isEdit ? 'Factura actualizada correctamente' : 'Factura creada correctamente'}
+              Factura actualizada correctamente
             </p>
           </div>
         </div>
@@ -476,7 +453,7 @@ const InvoiceFormPage = () => {
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-                    
+
                     {showCustomerDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-10 max-h-60 overflow-y-auto">
                         {customers.map(customer => (
@@ -549,7 +526,7 @@ const InvoiceFormPage = () => {
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-                    
+
                     {showWarehouseDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-10 max-h-60 overflow-y-auto">
                         {warehouses.map(warehouse => (
@@ -585,45 +562,6 @@ const InvoiceFormPage = () => {
                     <option value="presupuesto">Presupuesto</option>
                     <option value="pendiente">Pendiente</option>
                     <option value="pagada">Pagada</option>
-                  </select>
-                </div>
-
-                {/* Discount */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Descuento (%)
-                  </label>
-                  <div className="relative">
-                    <Percent className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="number"
-                      value={formData.discount}
-                      onChange={(e) => setFormData(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
-                      min="0"
-                      max="100"
-                      step="0.01"
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                {/* Payment Terms */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Plazo de Pago (días)
-                  </label>
-                  <select
-                    value={formData.payment_terms}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
-                    className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                  >
-                    <option value="0">Al contado</option>
-                    <option value="7">7 días</option>
-                    <option value="15">15 días</option>
-                    <option value="30">30 días (por defecto)</option>
-                    <option value="60">60 días</option>
-                    <option value="90">90 días</option>
                   </select>
                 </div>
               </div>
@@ -798,7 +736,7 @@ const InvoiceFormPage = () => {
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
               <Link
-                href="/invoices"
+                href={`/invoices/${invoiceId}`}
                 className="px-6 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all font-light"
               >
                 Cancelar
@@ -814,7 +752,7 @@ const InvoiceFormPage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Factura' : 'Crear Factura'}
+                  {loading ? 'Guardando...' : 'Actualizar Factura'}
                 </span>
               </button>
             </div>
@@ -859,50 +797,10 @@ const InvoiceFormPage = () => {
               </div>
             </div>
           </div>
-
-          {/* Help Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Consejos</h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Cliente requerido</p>
-                    <p className="text-xs text-gray-500">
-                      Selecciona el cliente antes de guardar
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Productos únicos</p>
-                    <p className="text-xs text-gray-500">
-                      Cada producto debe agregarse una sola vez
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">Impuestos flexibles</p>
-                    <p className="text-xs text-gray-500">
-                      Puedes ajustar el % de impuesto por producto
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 };
 
-export default InvoiceFormPage;
+export default InvoiceEditPage;

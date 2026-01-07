@@ -16,6 +16,8 @@ import {
   Building2
 } from 'lucide-react';
 import { customersAPI } from '@/lib/api';
+import { extractErrorMessage } from '@/lib/errorHandler';
+import { Customer } from '@/types/customer';
 
 interface CustomerFormData {
   name: string;
@@ -24,17 +26,6 @@ interface CustomerFormData {
   address: string;
   tax_id: string;
   is_active: boolean;
-}
-
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  is_active: boolean;
-  created_at: string;
 }
 
 const CustomerFormPage = () => {
@@ -161,11 +152,7 @@ const CustomerFormPage = () => {
 
     } catch (error: any) {
       console.error('Error saving customer:', error);
-      if (error.response?.data?.detail) {
-        setErrors({ general: error.response.data.detail });
-      } else {
-        setErrors({ general: 'Error al guardar el cliente. Inténtalo de nuevo.' });
-      }
+      setErrors({ general: extractErrorMessage(error) });
     } finally {
       setLoading(false);
     }

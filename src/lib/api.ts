@@ -278,7 +278,7 @@ export const warehouseProductsAPI = {
     apiClient.get(`/warehouse-products/${warehouseId}/${productId}`),
 
   createOrUpdate: (data: any) =>
-    apiClient.post('/warehouse-products', data),
+    apiClient.post('/warehouse-products/', data),
 
   updateStock: (warehouseId: number, productId: number, data: any) =>
     apiClient.put(`/warehouse-products/${warehouseId}/${productId}`, data),

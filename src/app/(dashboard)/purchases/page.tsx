@@ -23,7 +23,7 @@ import {
   CheckCircle,
   XCircle
 } from 'lucide-react';
-import { purchasesAPI } from '@/lib/api';
+import { purchasesAPI, suppliersAPI, warehousesAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 
 interface Purchase {
@@ -33,18 +33,24 @@ interface Purchase {
   warehouse_id?: number;
   purchase_number: string;
   date: string;
-  expected_delivery_date?: string;
   total_amount: number;
   status: 'pending' | 'approved' | 'received' | 'cancelled';
-  notes?: string;
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  updated_at?: string;
+  // Campos que pueden venir en respuestas detalladas pero no en la lista básica
   supplier?: {
     id: number;
     name: string;
     email: string;
   };
-  items: PurchaseItem[];
+  warehouse?: {
+    id: number;
+    name: string;
+    location: string;
+  };
+  items?: PurchaseItem[];
+  expected_delivery_date?: string;
+  notes?: string;
 }
 
 interface PurchaseItem {
@@ -60,6 +66,7 @@ interface PurchaseItem {
   };
 }
 
+// Lista de compras - corregido para PurchaseResponse sin items
 const PurchasesPage = () => {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [loading, setLoading] = useState(true);
@@ -82,7 +89,47 @@ const PurchasesPage = () => {
         status: statusFilter || undefined,
         limit: 100
       });
-      setPurchases(response.data);
+      const purchasesData = response.data;
+
+      // Fetch supplier and warehouse details for each purchase
+      const purchasesWithDetails = await Promise.all(
+        purchasesData.map(async (purchase: Purchase) => {
+          try {
+            // Fetch supplier details
+            let supplierDetails = null;
+            if (purchase.supplier_id) {
+              try {
+                const supplierResponse = await suppliersAPI.getById(purchase.supplier_id);
+                supplierDetails = supplierResponse.data;
+              } catch (error) {
+                console.error(`Error fetching supplier ${purchase.supplier_id}:`, error);
+              }
+            }
+
+            // Fetch warehouse details
+            let warehouseDetails = null;
+            if (purchase.warehouse_id) {
+              try {
+                const warehouseResponse = await warehousesAPI.getById(purchase.warehouse_id);
+                warehouseDetails = warehouseResponse.data;
+              } catch (error) {
+                console.error(`Error fetching warehouse ${purchase.warehouse_id}:`, error);
+              }
+            }
+
+            return {
+              ...purchase,
+              supplier: supplierDetails,
+              warehouse: warehouseDetails
+            };
+          } catch (error) {
+            console.error(`Error fetching details for purchase ${purchase.id}:`, error);
+            return purchase;
+          }
+        })
+      );
+
+      setPurchases(purchasesWithDetails);
     } catch (error) {
       console.error('Error fetching purchases:', error);
     } finally {
@@ -231,7 +278,7 @@ const PurchasesPage = () => {
             </div>
             <div className="flex items-center text-sm text-gray-500">
               <Package className="w-3 h-3 mr-2" />
-              {purchase.items.length} productos
+              {purchase.items?.length || 0} productos
             </div>
             {purchase.supplier && (
               <div className="flex items-center text-sm text-gray-500">
@@ -497,7 +544,7 @@ const PurchasesPage = () => {
                         {purchase.supplier?.name || '-'}
                       </td>
                       <td className="py-4 px-6 text-gray-900">
-                        {purchase.items.length} productos
+                        {purchase.items?.length || 0} productos
                       </td>
                       <td className="py-4 px-6 font-medium text-gray-900">
                         {formatCurrency(purchase.total_amount)}

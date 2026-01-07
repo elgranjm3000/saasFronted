@@ -26,8 +26,14 @@ interface Product {
   sku: string;
   description: string;
   price: number;
-  quantity: number;
+  cost?: number;
+  stock_quantity: number;
+  min_stock?: number;
   category?: {
+    id: number;
+    name: string;
+  };
+  warehouse?: {
     id: number;
     name: string;
   };
@@ -81,28 +87,27 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
     }
   };
 
-  const getStockStatus = (quantity: number) => {
-    const minStock = 10;
-    if (quantity === 0) return { 
-      status: 'out', 
-      color: 'text-red-600', 
-      bg: 'bg-red-100', 
+  const getStockStatus = (quantity: number, minStock: number = 10) => {
+    if (quantity === 0) return {
+      status: 'out',
+      color: 'text-red-600',
+      bg: 'bg-red-100',
       icon: TrendingDown,
-      label: 'Agotado' 
+      label: 'Agotado'
     };
-    if (quantity <= minStock) return { 
-      status: 'low', 
-      color: 'text-orange-600', 
-      bg: 'bg-orange-100', 
+    if (quantity <= minStock) return {
+      status: 'low',
+      color: 'text-orange-600',
+      bg: 'bg-orange-100',
       icon: AlertTriangle,
-      label: 'Stock Bajo' 
+      label: 'Stock Bajo'
     };
-    return { 
-      status: 'good', 
-      color: 'text-green-600', 
-      bg: 'bg-green-100', 
+    return {
+      status: 'good',
+      color: 'text-green-600',
+      bg: 'bg-green-100',
       icon: TrendingUp,
-      label: 'En Stock' 
+      label: 'En Stock'
     };
   };
 
@@ -137,7 +142,7 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
     );
   }
 
-  const stockStatus = getStockStatus(product.quantity);
+  const stockStatus = getStockStatus(product.stock_quantity, product.min_stock);
   const StockIcon = stockStatus.icon;
 
   return (
@@ -220,8 +225,13 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                       <p className="text-2xl font-light text-gray-900">
                         {formatCurrency(product.price)}
                       </p>
+                      {product.cost && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Costo: {formatCurrency(product.cost)}
+                        </p>
+                      )}
                     </div>
-                    
+
                     <div>
                       <div className="flex items-center mb-2">
                         <Package className="w-4 h-4 text-gray-400 mr-2" />
@@ -229,10 +239,15 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                       </div>
                       <div className="flex items-center space-x-2">
                         <p className="text-2xl font-light text-gray-900">
-                          {product.quantity}
+                          {product.stock_quantity}
                         </p>
                         <StockIcon className={`w-5 h-5 ${stockStatus.color}`} />
                       </div>
+                      {product.min_stock && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Mínimo: {product.min_stock}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -272,7 +287,17 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                     </div>
                   </div>
                 )}
-                
+
+                {product.warehouse && (
+                  <div className="flex items-center">
+                    <Package className="w-5 h-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="text-sm text-gray-500">Almacén</p>
+                      <p className="font-medium text-gray-900">{product.warehouse.name}</p>
+                    </div>
+                  </div>
+                )}
+
                 {product.created_at && (
                   <div className="flex items-center">
                     <Calendar className="w-5 h-5 text-gray-400 mr-3" />
@@ -307,18 +332,26 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Cantidad actual</span>
-                  <span className="font-medium text-gray-900">{product.quantity}</span>
+                  <span className="font-medium text-gray-900">{product.stock_quantity}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Stock mínimo</span>
-                  <span className="font-medium text-gray-900">10</span>
+                  <span className="font-medium text-gray-900">{product.min_stock || 10}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Valor del stock</span>
                   <span className="font-medium text-gray-900">
-                    {formatCurrency(product.price * product.quantity)}
+                    {formatCurrency(product.price * product.stock_quantity)}
                   </span>
                 </div>
+                {product.cost && (
+                  <div className="flex justify-between pt-3 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">Margen</span>
+                    <span className="font-medium text-gray-900">
+                      {((product.price - product.cost) / product.price * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>

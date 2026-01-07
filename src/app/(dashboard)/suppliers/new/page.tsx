@@ -2,94 +2,90 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { 
+import {
   ArrowLeft,
   Save,
-  Users,
+  Building2,
   AlertCircle,
   CheckCircle,
   Loader2,
   Mail,
   Phone,
   MapPin,
-  Hash,
-  Building2
+  User,
+  Hash
 } from 'lucide-react';
-import { customersAPI } from '@/lib/api';
+import { suppliersAPI } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errorHandler';
-import { Customer } from '@/types/customer';
+import { Supplier } from '@/types/supplier';
 
-interface CustomerFormData {
+interface SupplierFormData {
   name: string;
   email: string;
   phone: string;
   address: string;
   tax_id: string;
-  is_active: boolean;
+  contact_person: string;
 }
 
-const CustomerFormPage = () => {
-  const [formData, setFormData] = useState<CustomerFormData>({
+const SupplierFormPage = () => {
+  const [formData, setFormData] = useState<SupplierFormData>({
     name: '',
     email: '',
     phone: '',
     address: '',
     tax_id: '',
-    is_active: true
+    contact_person: ''
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-  
+
   const router = useRouter();
   const params = useParams();
-  
-  // Determinar si estamos editando o creando
+
   const isEdit = params?.id && params.id !== 'new';
-  const customerId = isEdit ? Number(params.id) : null;
+  const supplierId = isEdit ? Number(params.id) : null;
 
   useEffect(() => {
-    if (isEdit && customerId) {
-      fetchCustomer();
+    if (isEdit && supplierId) {
+      fetchSupplier();
     }
-  }, [isEdit, customerId]);
+  }, [isEdit, supplierId]);
 
-  const fetchCustomer = async () => {
-    if (!customerId) return;
-    
+  const fetchSupplier = async () => {
+    if (!supplierId) return;
+
     try {
       setInitialLoading(true);
-      const response = await customersAPI.getById(customerId);
-      const customer: Customer = response.data;
-      
+      const response = await suppliersAPI.getById(supplierId);
+      const supplier: Supplier = response.data;
+
       setFormData({
-        name: customer.name || '',
-        email: customer.email || '',
-        phone: customer.phone || '',
-        address: customer.address || '',
-        tax_id: customer.tax_id || '',
-        is_active: customer.is_active
+        name: supplier.name || '',
+        email: supplier.email || '',
+        phone: supplier.phone || '',
+        address: supplier.address || '',
+        tax_id: supplier.tax_id || '',
+        contact_person: supplier.contact_person || ''
       });
     } catch (error) {
-      console.error('Error fetching customer:', error);
-      setErrors({ general: 'Error al cargar el cliente' });
+      console.error('Error fetching supplier:', error);
+      setErrors({ general: 'Error al cargar el proveedor' });
     } finally {
       setInitialLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type } = e.target;
-    const checked = (e.target as HTMLInputElement).checked;
-    
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: value
     }));
-    
-    // Clear error when user starts typing
+
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -102,13 +98,11 @@ const CustomerFormPage = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del cliente es requerido';
+      newErrors.name = 'El nombre del proveedor es requerido';
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'El email es requerido';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'El formato del email no es válido';
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = 'El email no es válido';
     }
 
     setErrors(newErrors);
@@ -117,40 +111,41 @@ const CustomerFormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
       setLoading(true);
-      
+
       const submitData = {
         name: formData.name.trim(),
-        email: formData.email.trim(),
+        email: formData.email.trim() || undefined,
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
-        tax_id: formData.tax_id.trim() || undefined
+        tax_id: formData.tax_id.trim() || undefined,
+        contact_person: formData.contact_person.trim() || undefined
       };
 
-      if (isEdit && customerId) {
-        await customersAPI.update(customerId, submitData);
+      if (isEdit && supplierId) {
+        await suppliersAPI.update(supplierId, submitData);
       } else {
-        await customersAPI.create(submitData);
+        await suppliersAPI.create(submitData);
       }
 
       setSuccess(true);
-      
+
       setTimeout(() => {
         if (isEdit) {
-          router.push(`/customers/${customerId}`);
+          router.push(`/suppliers/${supplierId}`);
         } else {
-          router.push('/customers');
+          router.push('/suppliers');
         }
       }, 1500);
 
     } catch (error: any) {
-      console.error('Error saving customer:', error);
+      console.error('Error saving supplier:', error);
       setErrors({ general: extractErrorMessage(error) });
     } finally {
       setLoading(false);
@@ -171,22 +166,20 @@ const CustomerFormPage = () => {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <Link
-              href={isEdit ? `/customers/${customerId}` : '/customers'}
-              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">
-                {isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}
-              </h1>
-              <p className="text-gray-500 font-light">
-                {isEdit ? 'Modifica la información del cliente' : 'Completa la información para crear un nuevo cliente'}
-              </p>
-            </div>
+        <div className="flex items-center space-x-4 mb-6">
+          <Link
+            href={isEdit ? `/suppliers/${supplierId}` : '/suppliers'}
+            className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-3xl font-light text-gray-900 mb-2">
+              {isEdit ? 'Editar Proveedor' : 'Nuevo Proveedor'}
+            </h1>
+            <p className="text-gray-500 font-light">
+              {isEdit ? 'Modifica la información del proveedor' : 'Completa la información para crear un nuevo proveedor'}
+            </p>
           </div>
         </div>
       </div>
@@ -197,7 +190,7 @@ const CustomerFormPage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              {isEdit ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente'}
+              {isEdit ? 'Proveedor actualizado correctamente' : 'Proveedor creado correctamente'}
             </p>
           </div>
         </div>
@@ -220,12 +213,12 @@ const CustomerFormPage = () => {
             {/* Basic Information */}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Información Básica</h3>
+                <h3 className="text-xl font-light text-gray-900">Información del Proveedor</h3>
               </div>
               <div className="p-6 space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Nombre del Cliente *
+                    Nombre del Proveedor *
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -237,7 +230,7 @@ const CustomerFormPage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.name ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="Ej: Empresa ABC S.A."
+                      placeholder="Ej: Proveedora S.A."
                     />
                   </div>
                   {errors.name && (
@@ -247,7 +240,32 @@ const CustomerFormPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Email *
+                    Persona de Contacto
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      name="contact_person"
+                      value={formData.contact_person}
+                      onChange={handleInputChange}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      placeholder="Ej: Juan Pérez"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact Information */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-xl font-light text-gray-900">Información de Contacto</h3>
+              </div>
+              <div className="p-6 space-y-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Email
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -259,7 +277,7 @@ const CustomerFormPage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.email ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="contacto@empresa.com"
+                      placeholder="Ej: contacto@proveedora.com"
                     />
                   </div>
                   {errors.email && (
@@ -279,24 +297,7 @@ const CustomerFormPage = () => {
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="+1 234 567 8900"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Tax ID / RUC
-                  </label>
-                  <div className="relative">
-                    <Hash className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      name="tax_id"
-                      value={formData.tax_id}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="123456789"
+                      placeholder="Ej: +1234567890"
                     />
                   </div>
                 </div>
@@ -311,44 +312,44 @@ const CustomerFormPage = () => {
                       name="address"
                       value={formData.address}
                       onChange={handleInputChange}
-                      rows={3}
+                      rows={2}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none resize-none"
-                      placeholder="Dirección completa del cliente..."
+                      placeholder="Dirección completa del proveedor..."
                     />
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Status */}
+            {/* Tax Information */}
             <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Estado</h3>
+                <h3 className="text-xl font-light text-gray-900">Información Fiscal</h3>
               </div>
               <div className="p-6">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                  />
-                  <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
-                    Cliente activo
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    RUC / Tax ID
                   </label>
+                  <div className="relative">
+                    <Hash className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      name="tax_id"
+                      value={formData.tax_id}
+                      onChange={handleInputChange}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none font-mono"
+                      placeholder="Ej: 12345678901"
+                    />
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Los clientes inactivos no aparecerán en las listas principales
-                </p>
               </div>
             </div>
 
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
               <Link
-                href={isEdit ? `/customers/${customerId}` : '/customers'}
+                href={isEdit ? `/suppliers/${supplierId}` : '/suppliers'}
                 className="px-6 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all font-light"
               >
                 Cancelar
@@ -364,7 +365,7 @@ const CustomerFormPage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Cliente' : 'Crear Cliente'}
+                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Proveedor' : 'Crear Proveedor'}
                 </span>
               </button>
             </div>
@@ -380,18 +381,23 @@ const CustomerFormPage = () => {
             </div>
             <div className="p-6">
               <div className="text-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl mx-auto flex items-center justify-center mb-4">
-                  <Users className="w-12 h-12 text-blue-600" />
+                <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mx-auto flex items-center justify-center mb-4">
+                  <Building2 className="w-12 h-12 text-gray-400" />
                 </div>
                 <h4 className="font-medium text-gray-900 mb-1">
-                  {formData.name || 'Nombre del cliente'}
+                  {formData.name || 'Nombre del proveedor'}
                 </h4>
-                <p className="text-sm text-gray-500">
-                  {formData.email || 'email@cliente.com'}
-                </p>
               </div>
-              
+
               <div className="space-y-3">
+                {formData.email && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Email</span>
+                    <span className="font-medium text-gray-900 text-right">
+                      {formData.email}
+                    </span>
+                  </div>
+                )}
                 {formData.phone && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-500">Teléfono</span>
@@ -400,20 +406,22 @@ const CustomerFormPage = () => {
                     </span>
                   </div>
                 )}
-                {formData.tax_id && (
+                {formData.contact_person && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Tax ID</span>
+                    <span className="text-sm text-gray-500">Contacto</span>
+                    <span className="font-medium text-gray-900">
+                      {formData.contact_person}
+                    </span>
+                  </div>
+                )}
+                {formData.tax_id && (
+                  <div className="flex justify-between pt-3 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">RUC</span>
                     <span className="font-medium text-gray-900">
                       {formData.tax_id}
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-3 border-t border-gray-100">
-                  <span className="text-sm text-gray-500">Estado</span>
-                  <span className={`font-medium ${formData.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                    {formData.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
@@ -430,27 +438,27 @@ const CustomerFormPage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Información completa</p>
                     <p className="text-xs text-gray-500">
-                      Completa todos los campos posibles para facilitar la facturación
+                      Incluye todos los datos de contacto posibles
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Email válido</p>
+                    <p className="text-sm font-medium text-gray-900">Datos fiscales</p>
                     <p className="text-xs text-gray-500">
-                      Asegúrate de que el email sea correcto para enviar documentos
+                      El RUC es importante para facturación
                     </p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Tax ID</p>
+                    <p className="text-sm font-medium text-gray-900">Contacto directo</p>
                     <p className="text-xs text-gray-500">
-                      El Tax ID es importante para la facturación legal
+                      Especifica la persona de contacto para agilizar comunicaciones
                     </p>
                   </div>
                 </div>
@@ -463,4 +471,4 @@ const CustomerFormPage = () => {
   );
 };
 
-export default CustomerFormPage;
+export default SupplierFormPage;

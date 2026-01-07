@@ -105,6 +105,74 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      // Create a simple text representation for download
+      const content = `
+FACTURA: ${invoice.invoice_number}
+================================
+Fecha: ${formatDate(invoice.issue_date, 'long')}
+Vencimiento: ${invoice.due_date ? formatDate(invoice.due_date, 'long') : 'N/A'}
+
+CLIENTE
+-------
+${invoice.customer?.name || 'N/A'}
+${invoice.customer?.email || ''}
+${invoice.customer?.phone || ''}
+${invoice.customer?.address || ''}
+
+ITEMS
+-----
+${invoice.items?.map(item =>
+  `${item.product_name} x${item.quantity} - ${formatCurrency(item.unit_price)} = ${formatCurrency(item.quantity * item.unit_price)}`
+).join('\n') || 'No items'}
+
+RESUMEN
+------
+Subtotal: ${formatCurrency(invoice.subtotal)}
+Impuestos: ${formatCurrency(invoice.tax_amount)}
+TOTAL: ${formatCurrency(invoice.total_amount)}
+
+Estado: ${invoice.status}
+Notas: ${invoice.notes || 'N/A'}
+      `.trim();
+
+      // Create a Blob and download
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Factura_${invoice.invoice_number}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error downloading invoice:', error);
+      alert('Error al descargar la factura');
+    }
+  };
+
+  const handleSendEmail = () => {
+    const subject = encodeURIComponent(`Factura ${invoice.invoice_number}`);
+    const body = encodeURIComponent(`
+Estimado/a ${invoice.customer?.name},
+
+Adjunto encontrará la factura ${invoice.invoice_number} por un total de ${formatCurrency(invoice.total_amount)}.
+
+Fecha de emisión: ${formatDate(invoice.issue_date, 'long')}
+Fecha de vencimiento: ${invoice.due_date ? formatDate(invoice.due_date, 'long') : 'N/A'}
+
+Saludos cordiales.
+    `.trim());
+
+    window.location.href = `mailto:${invoice.customer?.email}?subject=${subject}&body=${body}`;
+  };
+
   const getStatusInfo = (status: string) => {
     const statusMap: Record<string, { color: string; bg: string; icon: any; label: string }> = {
       'presupuesto': { color: 'text-blue-600', bg: 'bg-blue-100', icon: FileText, label: 'Presupuesto' },
@@ -189,13 +257,25 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
           </div>
 
           <div className="flex items-center space-x-3">
-            <button className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors">
+            <button
+              onClick={handlePrint}
+              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+              title="Imprimir factura"
+            >
               <Printer className="w-5 h-5" />
             </button>
-            <button className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors">
+            <button
+              onClick={handleDownloadPDF}
+              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+              title="Descargar factura"
+            >
               <Download className="w-5 h-5" />
             </button>
-            <button className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors">
+            <button
+              onClick={handleSendEmail}
+              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+              title="Enviar por email"
+            >
               <Send className="w-5 h-5" />
             </button>
             <Link
@@ -410,22 +490,34 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
               <h3 className="text-xl font-light text-gray-900">Acciones</h3>
             </div>
             <div className="p-6 space-y-3">
-              <button className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg">
+              <button
+                onClick={handlePrint}
+                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
+              >
                 <Printer className="w-4 h-4 mr-3" />
                 <span className="font-light">Imprimir</span>
               </button>
-              <button className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.02] shadow-lg">
+              <button
+                onClick={handleSendEmail}
+                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.02] shadow-lg"
+              >
                 <Send className="w-4 h-4 mr-3" />
                 <span className="font-light">Enviar por Email</span>
               </button>
-              <button className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-[1.02] shadow-lg">
+              <button
+                onClick={handleDownloadPDF}
+                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-2xl hover:from-purple-600 hover:to-purple-700 transition-all transform hover:scale-[1.02] shadow-lg"
+              >
                 <Download className="w-4 h-4 mr-3" />
-                <span className="font-light">Descargar PDF</span>
+                <span className="font-light">Descargar</span>
               </button>
-              <button className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-[1.02] shadow-lg">
-                <CreditCard className="w-4 h-4 mr-3" />
-                <span className="font-light">Registrar Pago</span>
-              </button>
+              <Link
+                href={`/invoices/${invoice.id}/edit`}
+                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-2xl hover:from-orange-600 hover:to-orange-700 transition-all transform hover:scale-[1.02] shadow-lg"
+              >
+                <Edit className="w-4 h-4 mr-3" />
+                <span className="font-light">Editar Factura</span>
+              </Link>
             </div>
           </div>
 

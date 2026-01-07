@@ -23,28 +23,16 @@ import {
 } from 'lucide-react';
 import { warehousesAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
-
-interface WarehouseData {
-  id: number;
-  name: string;
-  location: string;
-  company_id: number;
-}
-
-interface WarehouseProduct {
-  warehouse_id: number;
-  product_id: number;
-  stock: number;
-}
+import { Warehouse } from '@/types/warehouse';
 
 const WarehousesPage = () => {
-  const [warehouses, setWarehouses] = useState<WarehouseData[]>([]);
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedWarehouses, setSelectedWarehouses] = useState<number[]>([]);
-  const [sortBy, setSortBy] = useState<'name' | 'location'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'address'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
@@ -78,11 +66,11 @@ const WarehousesPage = () => {
   const filteredWarehouses = warehouses
     .filter(warehouse =>
       warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      warehouse.location.toLowerCase().includes(searchTerm.toLowerCase())
+      (warehouse.address && warehouse.address.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
-      const aValue = a[sortBy];
-      const bValue = b[sortBy];
+      const aValue = sortBy === 'address' ? (a.address || '') : a.name;
+      const bValue = sortBy === 'address' ? (b.address || '') : b.name;
       const modifier = sortOrder === 'asc' ? 1 : -1;
       return aValue > bValue ? modifier : -modifier;
     });
@@ -95,7 +83,7 @@ const WarehousesPage = () => {
     totalLowStock: 0
   };
 
-  const WarehouseCard = ({ warehouse }: { warehouse: WarehouseData }) => {
+  const WarehouseCard = ({ warehouse }: { warehouse: Warehouse }) => {
     return (
       <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100 hover:shadow-xl hover:shadow-gray-500/10 transition-all duration-300 hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
@@ -115,7 +103,7 @@ const WarehousesPage = () => {
             >
               <Edit className="w-4 h-4" />
             </Link>
-            <button 
+            <button
               onClick={() => handleDelete(warehouse.id)}
               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
             >
@@ -123,17 +111,19 @@ const WarehousesPage = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="mb-4">
           <h3 className="text-lg font-medium text-gray-900 mb-2">
             {warehouse.name}
           </h3>
-          <div className="flex items-center text-sm text-gray-500 mb-3">
-            <MapPin className="w-4 h-4 mr-1" />
-            {warehouse.location}
-          </div>
+          {warehouse.address && (
+            <div className="flex items-center text-sm text-gray-500 mb-3">
+              <MapPin className="w-4 h-4 mr-1" />
+              {warehouse.address}
+            </div>
+          )}
         </div>
-        
+
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <p className="text-sm text-gray-500">ID</p>
@@ -141,17 +131,21 @@ const WarehousesPage = () => {
               #{warehouse.id}
             </p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Empresa</p>
-            <p className="text-xl font-light text-gray-900">
-              #{warehouse.company_id}
-            </p>
-          </div>
+          {warehouse.manager && (
+            <div>
+              <p className="text-sm text-gray-500">Responsable</p>
+              <p className="text-xl font-light text-gray-900">
+                {warehouse.manager}
+              </p>
+            </div>
+          )}
         </div>
-        
+
         <div className="flex items-center justify-between">
-          <span className="px-3 py-1 text-sm rounded-full bg-blue-100 text-blue-600">
-            Activo
+          <span className={`px-3 py-1 text-sm rounded-full ${
+            warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+          }`}>
+            {warehouse.is_active ? 'Activo' : 'Inactivo'}
           </span>
           <Link
             href={`/warehouses/${warehouse.id}/products`}
@@ -271,13 +265,13 @@ const WarehousesPage = () => {
           </div>
           
           <div className="flex items-center space-x-3">
-            <select 
+            <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'name' | 'location')}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'address')}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
             >
               <option value="name">Ordenar por Nombre</option>
-              <option value="location">Ordenar por Ubicación</option>
+              <option value="address">Ordenar por Dirección</option>
             </select>
             
             <button
@@ -342,7 +336,8 @@ const WarehousesPage = () => {
                     <input type="checkbox" className="rounded border-gray-300" />
                   </th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Almacén</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Ubicación</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Dirección</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Responsable</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">ID</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
@@ -361,22 +356,33 @@ const WarehousesPage = () => {
                         </div>
                         <div>
                           <p className="font-medium text-gray-900">{warehouse.name}</p>
-                          <p className="text-sm text-gray-500">Empresa ID: {warehouse.company_id}</p>
+                          {warehouse.phone && (
+                            <p className="text-sm text-gray-500">{warehouse.phone}</p>
+                          )}
                         </div>
                       </div>
                     </td>
                     <td className="py-4 px-6">
-                      <div className="flex items-center">
-                        <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-gray-900">{warehouse.location}</span>
-                      </div>
+                      {warehouse.address ? (
+                        <div className="flex items-center">
+                          <MapPin className="w-4 h-4 text-gray-400 mr-2" />
+                          <span className="text-gray-900">{warehouse.address}</span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-6 text-gray-900">
+                      {warehouse.manager || '-'}
                     </td>
                     <td className="py-4 px-6 text-gray-900 font-mono text-sm">
                       #{warehouse.id}
                     </td>
                     <td className="py-4 px-6">
-                      <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                        Activo
+                      <span className={`px-3 py-1 text-sm rounded-full ${
+                        warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {warehouse.is_active ? 'Activo' : 'Inactivo'}
                       </span>
                     </td>
                     <td className="py-4 px-6">
@@ -393,7 +399,7 @@ const WarehousesPage = () => {
                         >
                           <Edit className="w-4 h-4" />
                         </Link>
-                        <button 
+                        <button
                           onClick={() => handleDelete(warehouse.id)}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                         >

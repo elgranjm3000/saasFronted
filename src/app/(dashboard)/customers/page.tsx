@@ -24,19 +24,7 @@ import {
 } from 'lucide-react';
 import { customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  company_id: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { Customer } from '@/types/customer';
 
 const CustomersPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);

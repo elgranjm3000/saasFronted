@@ -216,6 +216,13 @@ const InvoicesPage = () => {
             </p>
           </div>
           <div className="flex items-center space-x-3">
+            <Link
+              href="/invoices/pos"
+              className="flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.02] shadow-lg"
+            >
+              <DollarSign className="w-4 h-4 mr-2" />
+              <span className="font-light">POS</span>
+            </Link>
             <button className="flex items-center px-4 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all">
               <Upload className="w-4 h-4 mr-2" />
               <span className="font-light">Importar</span>

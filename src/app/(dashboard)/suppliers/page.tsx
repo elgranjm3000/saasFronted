@@ -25,20 +25,7 @@ import {
 } from 'lucide-react';
 import { suppliersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-
-interface Supplier {
-  id: number;
-  name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  contact_person?: string;
-  company_id: number;
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+import { Supplier } from '@/types/supplier';
 
 const SuppliersPage = () => {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);

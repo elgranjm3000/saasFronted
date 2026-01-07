@@ -28,3 +28,10 @@ export interface CustomerUpdate {
   is_active?: boolean;
 }
 
+export interface CustomerStats {
+  total_customers: number;
+  active_customers: number;
+  total_orders: number;
+  total_order_amount: number;
+}
+

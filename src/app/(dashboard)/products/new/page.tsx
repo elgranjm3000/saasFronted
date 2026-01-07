@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { 
+import {
   ArrowLeft,
   Save,
   Package,
@@ -12,18 +12,24 @@ import {
   DollarSign,
   Hash,
   Tag,
-  FileText
+  FileText,
+  Warehouse
 } from 'lucide-react';
-import { productsAPI } from '@/lib/api';
+import { productsAPI, warehouseProductsAPI } from '@/lib/api';
 import { generateSKU, formatCurrency } from '@/lib/utils';
+import { useProductForm } from '@/hooks/useProductForm';
+import { extractErrorMessage } from '@/lib/errorHandler';
 
 interface ProductFormData {
   name: string;
   description: string;
   sku: string;
   price: string;
-  quantity: string;
+  cost: string;
+  stock_quantity: string;
+  min_stock: string;
   category_id: string;
+  warehouse_id: string;
 }
 
 interface Product {
@@ -32,8 +38,14 @@ interface Product {
   description: string;
   sku: string;
   price: number;
-  quantity: number;
+  cost?: number;
+  stock_quantity?: number;
+  min_stock?: number;
   category?: {
+    id: number;
+    name: string;
+  };
+  warehouse?: {
     id: number;
     name: string;
   };
@@ -45,17 +57,21 @@ const ProductFormPage = () => {
     description: '',
     sku: '',
     price: '',
-    quantity: '',
-    category_id: ''
+    cost: '',
+    stock_quantity: '',
+    min_stock: '10',
+    category_id: '',
+    warehouse_id: ''
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-  
+
   const router = useRouter();
   const params = useParams();
+  const { warehouses, categories, loading: formLoading } = useProductForm();
   
   // Determinar si estamos editando o creando
   const isEdit = params?.id && params.id !== 'new';
@@ -75,19 +91,22 @@ const ProductFormPage = () => {
 
   const fetchProduct = async () => {
     if (!productId) return;
-    
+
     try {
       setInitialLoading(true);
       const response = await productsAPI.getById(productId);
       const product: Product = response.data;
-      
+
       setFormData({
         name: product.name || '',
         description: product.description || '',
         sku: product.sku || '',
         price: product.price?.toString() || '',
-        quantity: product.quantity?.toString() || '',
-        category_id: product.category?.id?.toString() || ''
+        cost: product.cost?.toString() || '',
+        stock_quantity: product.stock_quantity?.toString() || '',
+        min_stock: product.min_stock?.toString() || '10',
+        category_id: product.category?.id?.toString() || '',
+        warehouse_id: product.warehouse?.id?.toString() || ''
       });
     } catch (error) {
       console.error('Error fetching product:', error);
@@ -130,10 +149,14 @@ const ProductFormPage = () => {
       newErrors.price = 'El precio debe ser un número válido mayor o igual a 0';
     }
 
-    if (!formData.quantity.trim()) {
-      newErrors.quantity = 'La cantidad es requerida';
-    } else if (isNaN(Number(formData.quantity)) || Number(formData.quantity) < 0) {
-      newErrors.quantity = 'La cantidad debe ser un número válido mayor o igual a 0';
+    if (!formData.stock_quantity.trim()) {
+      newErrors.stock_quantity = 'El stock es requerido';
+    } else if (isNaN(Number(formData.stock_quantity)) || Number(formData.stock_quantity) < 0) {
+      newErrors.stock_quantity = 'El stock debe ser un número válido mayor o igual a 0';
+    }
+
+    if (formData.cost && (isNaN(Number(formData.cost)) || Number(formData.cost) < 0)) {
+      newErrors.cost = 'El costo debe ser un número válido mayor o igual a 0';
     }
 
     setErrors(newErrors);
@@ -142,31 +165,46 @@ const ProductFormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
       setLoading(true);
-      
+
       const submitData = {
         name: formData.name.trim(),
-        description: formData.description.trim(),
+        description: formData.description.trim() || undefined,
         sku: formData.sku.trim(),
         price: Number(formData.price),
-        quantity: Number(formData.quantity),
-        category_id: formData.category_id ? Number(formData.category_id) : 1 // Default category
+        cost: formData.cost ? Number(formData.cost) : undefined,
+        quantity: Number(formData.stock_quantity),
+        min_stock: Number(formData.min_stock),
+        category_id: formData.category_id ? Number(formData.category_id) : undefined,
+        warehouse_id: formData.warehouse_id ? Number(formData.warehouse_id) : undefined
       };
 
       if (isEdit && productId) {
         await productsAPI.update(productId, submitData);
       } else {
-        await productsAPI.create(submitData);
+        const response = await productsAPI.create(submitData);
+        const createdProduct = response.data;
+
+        // Create warehouse product entry if warehouse_id is specified
+        if (formData.warehouse_id) {
+          console.log('Creating warehouse product entry...');
+          await warehouseProductsAPI.createOrUpdate({
+            warehouse_id: Number(formData.warehouse_id),
+            product_id: createdProduct.id,
+            stock: Number(formData.stock_quantity)
+          });
+          console.log('Warehouse product entry created successfully');
+        }
       }
 
       setSuccess(true);
-      
+
       setTimeout(() => {
         if (isEdit) {
           router.push(`/products/${productId}`);
@@ -177,11 +215,7 @@ const ProductFormPage = () => {
 
     } catch (error: any) {
       console.error('Error saving product:', error);
-      if (error.response?.data?.detail) {
-        setErrors({ general: error.response.data.detail });
-      } else {
-        setErrors({ general: 'Error al guardar el producto. Inténtalo de nuevo.' });
-      }
+      setErrors({ general: extractErrorMessage(error) });
     } finally {
       setLoading(false);
     }
@@ -365,26 +399,102 @@ const ProductFormPage = () => {
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Costo del Producto
+                    </label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="number"
+                        name="cost"
+                        value={formData.cost}
+                        onChange={handleInputChange}
+                        step="0.01"
+                        min="0"
+                        className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
+                          errors.cost ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
+                        }`}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    {errors.cost && (
+                      <p className="mt-2 text-sm text-red-600">{errors.cost}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
                       Stock Inicial *
                     </label>
                     <div className="relative">
                       <Package className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <input
                         type="number"
-                        name="quantity"
-                        value={formData.quantity}
+                        name="stock_quantity"
+                        value={formData.stock_quantity}
                         onChange={handleInputChange}
                         min="0"
                         className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
-                          errors.quantity ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
+                          errors.stock_quantity ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                         }`}
                         placeholder="0"
                       />
                     </div>
-                    {errors.quantity && (
-                      <p className="mt-2 text-sm text-red-600">{errors.quantity}</p>
+                    {errors.stock_quantity && (
+                      <p className="mt-2 text-sm text-red-600">{errors.stock_quantity}</p>
                     )}
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-3">
+                      Stock Mínimo
+                    </label>
+                    <div className="relative">
+                      <Package className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <input
+                        type="number"
+                        name="min_stock"
+                        value={formData.min_stock}
+                        onChange={handleInputChange}
+                        min="0"
+                        className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                        placeholder="10"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-xl font-light text-gray-900">Ubicación</h3>
+              </div>
+              <div className="p-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Almacén
+                  </label>
+                  <div className="relative">
+                    <Warehouse className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <select
+                      name="warehouse_id"
+                      value={formData.warehouse_id}
+                      onChange={handleInputChange}
+                      disabled={formLoading}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">Seleccionar almacén</option>
+                      {warehouses.map((warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id.toString()}>
+                          {warehouse.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {formLoading && (
+                    <p className="mt-2 text-sm text-gray-500">Cargando almacenes...</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -405,16 +515,20 @@ const ProductFormPage = () => {
                       name="category_id"
                       value={formData.category_id}
                       onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      disabled={formLoading}
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <option value="">Seleccionar categoría</option>
-                      <option value="1">Electrónicos</option>
-                      <option value="2">Accesorios</option>
-                      <option value="3">Software</option>
-                      <option value="4">Hardware</option>
-                      <option value="5">Otros</option>
+                      {categories.map((category) => (
+                        <option key={category.id} value={category.id.toString()}>
+                          {category.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
+                  {formLoading && (
+                    <p className="mt-2 text-sm text-gray-500">Cargando categorías...</p>
+                  )}
                 </div>
               </div>
             </div>
@@ -472,17 +586,39 @@ const ProductFormPage = () => {
                     ${formData.price || '0.00'}
                   </span>
                 </div>
+                {formData.cost && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Costo</span>
+                    <span className="font-medium text-gray-900">
+                      ${formData.cost}
+                    </span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Stock</span>
                   <span className="font-medium text-gray-900">
-                    {formData.quantity || '0'}
+                    {formData.stock_quantity || '0'}
                   </span>
                 </div>
-                {formData.price && formData.quantity && (
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Stock Mínimo</span>
+                  <span className="font-medium text-gray-900">
+                    {formData.min_stock || '10'}
+                  </span>
+                </div>
+                {formData.price && formData.cost && (
+                  <div className="flex justify-between pt-3 border-t border-gray-100">
+                    <span className="text-sm text-gray-500">Margen</span>
+                    <span className="font-medium text-gray-900">
+                      {((Number(formData.price) - Number(formData.cost)) / Number(formData.price) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                )}
+                {formData.price && formData.stock_quantity && (
                   <div className="flex justify-between pt-3 border-t border-gray-100">
                     <span className="text-sm text-gray-500">Valor Total</span>
                     <span className="font-medium text-gray-900">
-                      ${(Number(formData.price) * Number(formData.quantity)).toFixed(2)}
+                      ${(Number(formData.price) * Number(formData.stock_quantity)).toFixed(2)}
                     </span>
                   </div>
                 )}
