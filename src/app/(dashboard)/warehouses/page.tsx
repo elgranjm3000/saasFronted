@@ -1,13 +1,13 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  Warehouse, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  Warehouse,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Eye,
   MapPin,
   Package,
@@ -17,13 +17,13 @@ import {
   ArrowUpDown,
   Download,
   Upload,
-  Loader2,
   Building2,
   AlertTriangle
 } from 'lucide-react';
 import { warehousesAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { Warehouse } from '@/types/warehouse';
+import { ListItemSkeleton } from '@/components/Skeleton';
 
 const WarehousesPage = () => {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
@@ -317,9 +317,7 @@ const WarehousesPage = () => {
 
       {/* Warehouses Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
+        <ListItemSkeleton count={6} />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredWarehouses.map((warehouse) => (

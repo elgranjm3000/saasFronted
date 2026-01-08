@@ -1,6 +1,6 @@
 'use client'
 import React, { useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   BarChart3,
@@ -19,7 +19,7 @@ import {
   Building2,
   Home,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -28,7 +28,8 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, logout } = useAuthStore();
   const pathname = usePathname();
 
   const menuItems = [
@@ -50,6 +51,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const handleLogout = () => {
     setUserMenuOpen(false);
     logout();
+    router.push('/login');
   };
 
   // Close user menu when clicking outside

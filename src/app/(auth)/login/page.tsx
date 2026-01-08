@@ -1,9 +1,9 @@
 'use client'
 import React, { useState } from 'react';
 import { Eye, EyeOff, Building2, User, Lock, ArrowRight } from 'lucide-react';
-//import { useAuth } from '@/hooks/useAuthProvider';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
+import { apiClient } from '@/lib/api';
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -17,7 +17,7 @@ export default function LoginPage() {
     company_tax_id: '',
   });
 
-  const { login } = useAuth();
+  const setAuth = useAuthStore((state) => state.setAuth);
   const router = useRouter();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,14 +31,25 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-    
+
     try {
-      await login(formData);
+      const response = await apiClient.post('/auth/login', {
+        username: formData.username,
+        password: formData.password,
+        company_tax_id: formData.company_tax_id || undefined
+      });
+
+      const { access_token, user } = response.data;
+
+      // Set auth in store
+      setAuth(user, access_token);
+
       router.push('/dashboard');
     } catch (error: any) {
       console.error('Login error:', error);
       setError(
-        error.response?.data?.message || 
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
         'Credenciales incorrectas. Inténtalo de nuevo.'
       );
     } finally {

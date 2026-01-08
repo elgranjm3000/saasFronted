@@ -1,13 +1,13 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  Package,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Eye,
   AlertTriangle,
   TrendingUp,
@@ -15,11 +15,11 @@ import {
   List,
   ArrowUpDown,
   Download,
-  Upload,
-  Loader2
+  Upload
 } from 'lucide-react';
 import { productsAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
+import { ListItemSkeleton } from '@/components/Skeleton';
 
 interface Product {
   id: number;
@@ -328,9 +328,7 @@ const ProductsPage = () => {
 
       {/* Products Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
+        <ListItemSkeleton count={8} />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product) => (

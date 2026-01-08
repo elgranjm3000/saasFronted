@@ -55,6 +55,7 @@ apiClient.interceptors.response.use(
       localStorage.removeItem('access_token');
       localStorage.removeItem('user_data');
       
+      localStorage.removeItem('auth-storage'); // Clear Zustand persist storage
       // Limpiar cookies
       if (typeof window !== 'undefined') {
         document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'

@@ -1,17 +1,16 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  FileText,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Eye,
   Download,
   Upload,
-  Loader2,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
@@ -26,6 +25,7 @@ import {
 } from 'lucide-react';
 import { invoicesAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { ListItemSkeleton } from '@/components/Skeleton';
 
 interface Invoice {
   id: number;
@@ -375,9 +375,7 @@ const InvoicesPage = () => {
 
       {/* Invoices Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
+        <ListItemSkeleton count={10} />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredInvoices.map((invoice) => (

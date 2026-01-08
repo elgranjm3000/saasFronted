@@ -1,13 +1,13 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  Users, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  Users,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Eye,
   Mail,
   Phone,
@@ -17,7 +17,6 @@ import {
   ArrowUpDown,
   Download,
   Upload,
-  Loader2,
   Building2,
   UserCheck,
   UserX
@@ -25,6 +24,7 @@ import {
 import { customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Customer } from '@/types/customer';
+import { ListItemSkeleton } from '@/components/Skeleton';
 
 const CustomersPage = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -328,9 +328,7 @@ const CustomersPage = () => {
 
       {/* Customers Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
+        <ListItemSkeleton count={8} />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredCustomers.map((customer) => (

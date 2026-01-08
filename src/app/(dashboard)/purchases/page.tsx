@@ -1,13 +1,13 @@
 'use client'
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { 
-  ShoppingCart, 
-  Plus, 
-  Search, 
-  Filter, 
-  Edit, 
-  Trash2, 
+import {
+  ShoppingCart,
+  Plus,
+  Search,
+  Filter,
+  Edit,
+  Trash2,
   Eye,
   Package,
   Calendar,
@@ -18,13 +18,13 @@ import {
   ArrowUpDown,
   Download,
   Upload,
-  Loader2,
   Clock,
   CheckCircle,
   XCircle
 } from 'lucide-react';
 import { purchasesAPI, suppliersAPI, warehousesAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { ListItemSkeleton } from '@/components/Skeleton';
 
 interface Purchase {
   id: number;
@@ -490,9 +490,7 @@ const PurchasesPage = () => {
 
       {/* Purchases Content */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-        </div>
+        <ListItemSkeleton count={10} />
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredPurchases.map((purchase) => (
