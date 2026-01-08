@@ -24,21 +24,36 @@ const getCookie = (name: string): string | null => {
 }
 
 // Interceptor para incluir el token de autorización
-// Nota: Si el token está en cookies HTTP-only, Axios lo enviará automáticamente
-// Este interceptor es para tokens en localStorage como fallback
 apiClient.interceptors.request.use(
   (config) => {
-    // Primero intentar obtener del localStorage (como fallback)
-    const tokenFromStorage = localStorage.getItem('access_token')
-    
+    // Try to get token from localStorage (from Zustand persist storage)
+    let tokenFromStorage = null;
+
+    if (typeof window !== 'undefined') {
+      // Try to get from Zustand persist storage
+      const authStorage = localStorage.getItem('auth-storage');
+      if (authStorage) {
+        try {
+          const parsed = JSON.parse(authStorage);
+          tokenFromStorage = parsed?.state?.token;
+        } catch (e) {
+          console.error('Error parsing auth-storage:', e);
+        }
+      }
+
+      // Fallback to direct access_token
+      if (!tokenFromStorage) {
+        tokenFromStorage = localStorage.getItem('access_token');
+      }
+    }
+
     if (tokenFromStorage) {
-      console.log('🔐 Request: Using token from localStorage')
-      
+      console.log('🔐 Request: Using token from localStorage');
       config.headers.Authorization = `Bearer ${tokenFromStorage}`;
     } else {
-      console.log('🔐 Request: Token will be sent via HTTP-only cookies (withCredentials: true)')
+      console.log('🔐 Request: No token in localStorage, relying on cookies');
     }
-    
+
     return config;
   },
   (error) => {
@@ -51,10 +66,20 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.error('❌ Response: 401 Unauthorized', error.config?.url);
+      const url = error.config?.url || 'unknown';
 
-      // Importar y usar el store solo en cliente
-      if (typeof window !== 'undefined') {
+      // Don't logout if it's the login endpoint itself
+      if (url.includes('/auth/login')) {
+        console.error('❌ Login failed:', error.response?.data);
+        return Promise.reject(error);
+      }
+
+      console.error('❌ Response: 401 Unauthorized on', url);
+
+      // Only logout once to prevent infinite loops
+      if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+        console.warn('⚠️ Authentication failed, logging out...');
+
         // Limpiar todo el estado de autenticación
         localStorage.removeItem('access_token');
         localStorage.removeItem('user_data');
@@ -65,7 +90,9 @@ apiClient.interceptors.response.use(
         document.cookie = 'user_data=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
 
         // Redirigir a login
-        window.location.href = '/login';
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 100);
       }
     }
     return Promise.reject(error);
