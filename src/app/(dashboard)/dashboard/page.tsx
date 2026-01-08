@@ -13,12 +13,12 @@ import {
   Plus,
   ArrowUpRight
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import DashboardLayout from '@/components/DashboardLayout';
 
 const DashboardPage = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const { statsCards, recentActivity, refreshData, isLoading, error } = useDashboardStats();
 
   const getIconForCard = (title: string) => {

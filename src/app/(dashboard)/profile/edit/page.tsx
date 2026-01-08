@@ -16,7 +16,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { authAPI } from '@/lib/api';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 
 interface EditProfileFormData {
   username: string;
@@ -47,7 +47,7 @@ interface UserProfile {
 
 const EditProfilePage = () => {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   
   const [formData, setFormData] = useState<EditProfileFormData>({
     username: '',

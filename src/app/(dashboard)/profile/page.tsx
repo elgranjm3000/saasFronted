@@ -18,7 +18,7 @@ import {
   Shield,
   Clock
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 import { authAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -40,7 +40,7 @@ interface UserProfile {
 }
 
 const ProfilePage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout } = useAuthStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

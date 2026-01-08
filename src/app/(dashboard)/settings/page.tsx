@@ -22,7 +22,7 @@ import {
   Eye,
   EyeOff
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuthStore } from '@/store/auth-store';
 import { formatCurrency } from '@/lib/utils';
 
 interface CompanySettings {
@@ -63,7 +63,7 @@ interface NotificationSettings {
 }
 
 const SettingsPage = () => {
-  const { user } = useAuth();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'company' | 'user' | 'notifications' | 'system'>('company');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);

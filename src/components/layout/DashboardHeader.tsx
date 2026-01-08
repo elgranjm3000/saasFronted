@@ -1,11 +1,11 @@
 'use client'
 import { useState } from 'react'
 import { Bell, Search, User, LogOut, Menu } from 'lucide-react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuthStore } from '@/store/auth-store'
 
 export default function DashboardHeader() {
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, logout } = useAuthStore()
 
   return (
     <header className="bg-white shadow-sm border-b border-slate-200">
