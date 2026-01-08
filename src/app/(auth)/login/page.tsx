@@ -39,19 +39,25 @@ export default function LoginPage() {
         company_tax_id: formData.company_tax_id || undefined
       });
 
+      console.log('✅ Login response:', response.data);
       const { access_token, user } = response.data;
 
       // Set auth in store (saves to localStorage via persist middleware)
       setAuth(user, access_token);
+      console.log('✅ Auth set in store');
 
       // Also save token to cookie for middleware to read
       if (typeof document !== 'undefined') {
         document.cookie = `access_token=${access_token}; path=/; max-age=604800; SameSite=Lax`;
+        console.log('✅ Token saved to cookie');
       }
+
+      // Verify cookie was saved
+      console.log('🍪 Current cookies:', document.cookie);
 
       router.push('/dashboard');
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('❌ Login error:', error);
       setError(
         error.response?.data?.detail ||
         error.response?.data?.message ||

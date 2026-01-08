@@ -51,19 +51,20 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      console.error('❌ Response: 401 Unauthorized - Token may be invalid')
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('user_data');
-      
-      localStorage.removeItem('auth-storage'); // Clear Zustand persist storage
-      // Limpiar cookies
+      console.error('❌ Response: 401 Unauthorized', error.config?.url);
+
+      // Importar y usar el store solo en cliente
       if (typeof window !== 'undefined') {
-        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-        document.cookie = 'user_data=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/'
-      }
-      
-      // Redirigir a login
-      if (typeof window !== 'undefined') {
+        // Limpiar todo el estado de autenticación
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_data');
+        localStorage.removeItem('auth-storage');
+
+        // Limpiar cookies
+        document.cookie = 'access_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+        document.cookie = 'user_data=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+
+        // Redirigir a login
         window.location.href = '/login';
       }
     }
