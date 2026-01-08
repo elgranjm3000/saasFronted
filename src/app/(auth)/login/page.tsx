@@ -41,8 +41,13 @@ export default function LoginPage() {
 
       const { access_token, user } = response.data;
 
-      // Set auth in store
+      // Set auth in store (saves to localStorage via persist middleware)
       setAuth(user, access_token);
+
+      // Also save token to cookie for middleware to read
+      if (typeof document !== 'undefined') {
+        document.cookie = `access_token=${access_token}; path=/; max-age=604800; SameSite=Lax`;
+      }
 
       router.push('/dashboard');
     } catch (error: any) {
