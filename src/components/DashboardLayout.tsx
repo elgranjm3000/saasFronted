@@ -18,6 +18,7 @@ import {
   LogOut,
   Building2,
   Home,
+  FolderTree,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -34,7 +35,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
-    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },    
+    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },
+    { icon: FolderTree, label: 'Categorias', href: '/categories', active: pathname.startsWith('/categories') },
     { icon: FileText, label: 'Facturas', href: '/invoices', active: pathname.startsWith('/invoices') },
     { icon: ShoppingCart, label: 'Compras', href: '/purchases', active: pathname.startsWith('/purchases') },
     { icon: Warehouse, label: 'Almacenes', href: '/warehouses', active: pathname.startsWith('/warehouses') },
