@@ -9,6 +9,7 @@ Sistema de gestión empresarial (ERP) moderno desarrollado con Next.js 14, TypeS
 ## 📋 Tabla de Contenidos
 
 - [Características](#-características)
+- [Mejoras Recientes](#-mejoras-recientes)
 - [Tecnologías](#-tecnologías)
 - [Instalación](#-instalación)
 - [Configuración](#-configuración)
@@ -53,8 +54,43 @@ Sistema de gestión empresarial (ERP) moderno desarrollado con Next.js 14, TypeS
 ### 🔐 Seguridad
 - **Autenticación**: Login con JWT
 - **Protección de Rutas**: Middleware de autenticación
-- **Gestión de Tokens**: Almacenamiento seguro de tokens
+- **Gestión de Tokens**: Almacenamiento en localStorage (Zustand persist) + cookies
 - **Roles de Usuario**: Sistema de permisos
+- **Error Boundaries**: Captura de errores JavaScript para prevenir crashes
+
+## 🎉 Mejoras Recientes
+
+### Arquitectura y Rendimiento
+- ✅ **Migración a Zustand**: Reemplazo de AuthContext por Zustand para estado global
+  - Estado más ligero y performante
+  - Persistencia automática con middleware
+  - API más simple y directa
+- ✅ **Eliminación de Dependencias No Usadas**: Removido Framer Motion y Recharts
+  - Reducción de ~200KB en bundle size
+  - Eliminación de 36 paquetes innecesarios
+- ✅ **Error Boundaries**: Implementación de Error Boundaries
+  - Captura de errores JavaScript sin crash total
+  - UI amigable con botón de recargar
+  - Muestra detalles del error en desarrollo
+
+### Experiencia de Usuario (UX)
+- ✅ **Loading Skeletons**: Reemplazo de spinners básicos por skeletons
+  - Mejor percepción de carga
+  - Estructura visual del contenido que viene
+  - Implementado en 6 páginas principales (products, invoices, customers, suppliers, warehouses, purchases)
+- ✅ **Diseño Minimalista**: Interfaz limpia y moderna
+  - Eliminación de elementos decorativos animados
+  - Sidebar simplificado y flat
+  - Colores sólidos en lugar de gradientes
+- ✅ **Íconos Mejorados**: Ícono de Categorías cambiado a FolderTree
+  - Mejor representación visual de jerarquía
+
+### Corrección de Bugs
+- ✅ **Autenticación Robusta**: Arreglado bug de logout inmediato
+  - Token guardado en localStorage (Zustand) + cookies (middleware)
+  - Interceptor de Axios lee correctamente del Zustand persist storage
+  - Prevención de loops infinitos de redirección
+  - Logging mejorado para debugging
 
 ## 🛠️ Tecnologías
 
@@ -66,10 +102,11 @@ Sistema de gestión empresarial (ERP) moderno desarrollado con Next.js 14, TypeS
 - **Iconos**: [Lucide React](https://lucide.dev/)
 
 ### Estado y Datos
-- **Cliente HTTP**: Axios
-- **Contexto**: React Context para autenticación
+- **Estado Global**: [Zustand](https://zustand-demo.pmnd.rs/) con persist middleware
+- **Cliente HTTP**: Axios con interceptores
+- **Error Boundaries**: React Error Boundaries para manejo de errores
+- **Skeletons**: Componentes de carga para mejor UX
 - **Hooks**: Custom hooks para lógica de negocio
-- **Formularios**: React Hook Form (listo para implementar)
 
 ### Backend (Integración)
 - **API**: REST API con FastAPI (backend separado)
@@ -149,12 +186,13 @@ http://localhost:8000/api/v1/
 ### Navegación
 Usa el menú lateral para navegar entre módulos:
 - 🏠 **Dashboard**: Vista general
-- 📦 **Productos**: Catálogo de productos
-- 📄 **Facturas**: Gestión de ventas
-- 🛒 **Compras**: Órdenes de compra
+- 🌳 **Categorías**: Organización de productos
 - 🏭 **Almacenes**: Gestión de inventario
+- 📦 **Productos**: Catálogo de productos
 - 👥 **Clientes**: Base de clientes
+- 📄 **Facturas**: Gestión de ventas
 - 🚚 **Proveedores**: Directorio de proveedores
+- 🛒 **Compras**: Órdenes de compra
 - 📊 **Reportes**: Estadísticas y análisis
 - ⚙️ **Configuración**: Ajustes del sistema
 
@@ -289,10 +327,30 @@ GET    /api/v1/warehouses/{id}/products
 ### Cliente API
 
 El cliente HTTP está configurado en `src/lib/api.ts` con:
-- Interceptores para agregar tokens JWT
-- Manejo centralizado de errores
-- Tipos TypeScript para todas las respuestas
-- Métodos helper para endpoints comunes
+- **Interceptores de Request**: Inyectan automáticamente el token JWT desde Zustand storage
+- **Interceptores de Response**: Manejo centralizado de errores 401 y logout
+- **Manejo de Errores**: Logging detallado para debugging
+- **Tipos TypeScript**: Todas las respuestas tipadas
+- **Métodos Helper**: Funciones para endpoints comunes
+
+#### Componentes de UI
+
+- **ErrorBoundary** (`src/components/ErrorBoundary.tsx`):
+  - Captura errores JavaScript en cualquier componente hijo
+  - Muestra UI amigable con botón de recargar
+  - En desarrollo, muestra stack trace completo
+
+- **Loading Skeletons** (`src/components/Skeleton.tsx`):
+  - `Skeleton` - Placeholder básico animado
+  - `ListItemSkeleton` - Para listas de items
+  - `TableSkeleton` - Para tablas
+  - `CardSkeleton` - Para tarjetas
+  - `DashboardSkeleton` - Para dashboard con stats
+
+- **Loading Wrappers** (`src/components/Loading.tsx`):
+  - `LoadingPage` - Wrapper con tipo (dashboard, table, list, spinner)
+  - `InlineLoading` - Para espacios pequeños
+  - `LoadingOverlay` - Para modales y dialogs
 
 ## 📁 Estructura del Proyecto
 
@@ -330,9 +388,12 @@ src/
 │   └── page.tsx                 # Página principal
 ├── components/                  # Componentes reutilizables
 │   ├── DashboardLayout.tsx      # Layout principal
+│   ├── ErrorBoundary.tsx       # Error boundary para capturar errores
+│   ├── Loading.tsx              # Componentes de carga (wrapper)
+│   ├── Skeleton.tsx             # Skeletons para loading states
 │   └── ...                     # Otros componentes
-├── contexts/                    # Contextos de React
-│   └── AuthContext.tsx          # Contexto de autenticación
+├── store/                       # Estado global con Zustand
+│   └── auth-store.ts           # Store de autenticación
 ├── hooks/                       # Custom hooks
 │   ├── useProductForm.ts        # Hook para formulario de productos
 │   ├── useProfile.ts            # Hook para perfil
@@ -401,7 +462,9 @@ npm run test:watch   # Tests en modo watch
 - **Client Components**: Marcados con `'use client'` para interactividad
 
 #### Estado Global
-- **AuthContext**: Manejo de autenticación y usuario
+- **Zustand**: Estado global ligero con persist middleware
+  - `auth-store`: Estado de autenticación, usuario y token
+  - Persistencia automática en localStorage
 - **Local State**: useState para estado de componente
 - **Server State**: Datos fetcheados del backend
 
