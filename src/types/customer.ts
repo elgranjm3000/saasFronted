@@ -1,10 +1,11 @@
+// Cliente actualizado para Venezuela
 export interface Customer {
   id: number;
   name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  tax_id?: string | null; // RIF: J-XXXXXXX-X o V-XXXXXXX-X
   company_id: number;
   is_active: boolean;
   created_at: string;
@@ -13,18 +14,18 @@ export interface Customer {
 
 export interface CustomerCreate {
   name: string;
-  email: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
 }
 
 export interface CustomerUpdate {
-  name?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
   is_active?: boolean;
 }
 
@@ -34,4 +35,3 @@ export interface CustomerStats {
   total_orders: number;
   total_order_amount: number;
 }
-

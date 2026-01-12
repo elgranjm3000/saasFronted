@@ -1,37 +1,28 @@
-// src/types/supplier.ts
+// Proveedor actualizado para Venezuela
 export interface Supplier {
   id: number;
   name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  contact_person?: string;
+  contact?: string | null;
+  address?: string | null;
+  tax_id?: string | null; // RIF: J-XXXXXXX-X
   company_id: number;
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  total_purchases?: number;
-  total_purchase_amount?: number;
 }
 
 export interface SupplierCreate {
   name: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  contact_person?: string;
+  contact?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
 }
 
 export interface SupplierUpdate {
-  name?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  tax_id?: string;
-  contact_person?: string;
-  is_active?: boolean;
+  name?: string | null;
+  contact?: string | null;
+  address?: string | null;
+  tax_id?: string | null;
 }
 
 export interface SupplierStats {

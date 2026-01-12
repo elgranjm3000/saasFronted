@@ -35,13 +35,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
-    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },
     { icon: FolderTree, label: 'Categorias', href: '/categories', active: pathname.startsWith('/categories') },
-    { icon: FileText, label: 'Facturas', href: '/invoices', active: pathname.startsWith('/invoices') },
-    { icon: ShoppingCart, label: 'Compras', href: '/purchases', active: pathname.startsWith('/purchases') },
     { icon: Warehouse, label: 'Almacenes', href: '/warehouses', active: pathname.startsWith('/warehouses') },
+    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },    
     { icon: Users, label: 'Clientes', href: '/customers', active: pathname.startsWith('/customers') },
+    { icon: FileText, label: 'Facturas', href: '/invoices', active: pathname.startsWith('/invoices') },
     { icon: Truck, label: 'Proveedores', href: '/suppliers', active: pathname.startsWith('/suppliers') },
+    { icon: ShoppingCart, label: 'Compras', href: '/purchases', active: pathname.startsWith('/purchases') },            
     { icon: BarChart3, label: 'Reportes', href: '/reports', active: pathname.startsWith('/reports') },
     { icon: Settings, label: 'Configuración', href: '/settings', active: pathname.startsWith('/settings') },
   ];
