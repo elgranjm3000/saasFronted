@@ -32,8 +32,10 @@ interface InvoiceItem {
   product_id: number;
   product_name: string;
   quantity: number;
-  unit_price: number;
-  tax_percent: number;
+  price_per_unit: number; // Backend usa price_per_unit
+  tax_rate?: number; // Backend usa tax_rate
+  tax_amount?: number;
+  is_exempt?: boolean;
 }
 
 interface Invoice {
@@ -47,15 +49,29 @@ interface Invoice {
     phone?: string;
     address?: string;
   };
-  issue_date: string;
+  date: string; // Backend usa 'date', no 'issue_date'
   due_date?: string;
-  subtotal: number;
-  tax_amount: number;
   total_amount: number;
-  status: 'presupuesto' | 'pendiente' | 'pagada' | 'vencida' | 'cancelada';
+  status: 'presupuesto' | 'factura' | 'pendiente' | 'pagada' | 'vencida' | 'cancelada';
   items?: InvoiceItem[];
   notes?: string;
   payment_terms?: string;
+  discount?: number;
+
+  // Venezuela SENIAT
+  control_number?: string;
+  transaction_type?: 'contado' | 'credito';
+  payment_method?: string;
+  credit_days?: number;
+  iva_percentage?: number;
+  iva_amount?: number;
+  taxable_base?: number;
+  exempt_amount?: number;
+  subtotal?: number;
+  total_with_taxes?: number;
+  customer_phone?: string;
+  customer_address?: string;
+
   created_at: string;
   updated_at: string;
 }
@@ -111,11 +127,11 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
 
   const handleDownloadPDF = async () => {
     try {
-      // Create a simple text representation for download
+      // Crear contenido de texto simple por ahora
       const content = `
 FACTURA: ${invoice.invoice_number}
 ================================
-Fecha: ${formatDate(invoice.issue_date, 'long')}
+Fecha: ${formatDate(invoice.date, 'long')}
 Vencimiento: ${invoice.due_date ? formatDate(invoice.due_date, 'long') : 'N/A'}
 
 CLIENTE
@@ -128,13 +144,14 @@ ${invoice.customer?.address || ''}
 ITEMS
 -----
 ${invoice.items?.map(item =>
-  `${item.product_name} x${item.quantity} - ${formatCurrency(item.unit_price)} = ${formatCurrency(item.quantity * item.unit_price)}`
+  `${item.product_name} x${item.quantity} - ${formatCurrency(item.price_per_unit)} = ${formatCurrency(item.quantity * item.price_per_unit)}`
 ).join('\n') || 'No items'}
 
 RESUMEN
 ------
-Subtotal: ${formatCurrency(invoice.subtotal)}
-Impuestos: ${formatCurrency(invoice.tax_amount)}
+${invoice.taxable_base ? `Base Imponible: ${formatCurrency(invoice.taxable_base)}` : ''}
+${invoice.exempt_amount ? `Monto Exento: ${formatCurrency(invoice.exempt_amount)}` : ''}
+${invoice.iva_amount ? `IVA (${invoice.iva_percentage || 16}%): ${formatCurrency(invoice.iva_amount)}` : ''}
 TOTAL: ${formatCurrency(invoice.total_amount)}
 
 Estado: ${invoice.status}
@@ -164,7 +181,7 @@ Estimado/a ${invoice.customer?.name},
 
 Adjunto encontrará la factura ${invoice.invoice_number} por un total de ${formatCurrency(invoice.total_amount)}.
 
-Fecha de emisión: ${formatDate(invoice.issue_date, 'long')}
+Fecha de emisión: ${formatDate(invoice.date, 'long')}
 Fecha de vencimiento: ${invoice.due_date ? formatDate(invoice.due_date, 'long') : 'N/A'}
 
 Saludos cordiales.
@@ -317,7 +334,7 @@ Saludos cordiales.
                     Fecha de Emisión
                   </p>
                   <p className="text-lg font-light text-gray-900">
-                    {formatDate(invoice.issue_date, 'long')}
+                    {formatDate(invoice.date, 'long')}
                   </p>
                 </div>
 
@@ -361,17 +378,62 @@ Saludos cordiales.
                   </div>
                 </div>
 
+                {/* Venezuela SENIAT Info */}
+                {(invoice.transaction_type || invoice.payment_method || invoice.control_number) && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-4">Venezuela SENIAT</h3>
+                    <div className="space-y-3">
+                      {invoice.control_number && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-xs">Nro. Control</span>
+                          <span className="font-medium text-gray-900">{invoice.control_number}</span>
+                        </div>
+                      )}
+                      {invoice.transaction_type && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-xs">Tipo Transacción</span>
+                          <span className="font-medium text-gray-900 capitalize">{invoice.transaction_type}</span>
+                        </div>
+                      )}
+                      {invoice.payment_method && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-xs">Forma de Pago</span>
+                          <span className="font-medium text-gray-900 capitalize">
+                            {invoice.payment_method.replace('_', ' ')}
+                          </span>
+                        </div>
+                      )}
+                      {invoice.transaction_type === 'credito' && invoice.credit_days > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-gray-600 text-xs">Días Crédito</span>
+                          <span className="font-medium text-gray-900">{invoice.credit_days}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-4">Información de Pago</h3>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-600">Impuestos</span>
-                      <span className="font-medium text-gray-900">{formatCurrency(invoice.tax_amount)}</span>
-                    </div>
+                    {invoice.taxable_base > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 text-xs">Base Imponible</span>
+                        <span className="font-medium text-gray-900">{formatCurrency(invoice.taxable_base)}</span>
+                      </div>
+                    )}
+                    {invoice.exempt_amount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-green-600 text-xs">Monto Exento</span>
+                        <span className="font-medium text-green-700">{formatCurrency(invoice.exempt_amount)}</span>
+                      </div>
+                    )}
+                    {invoice.iva_amount > 0 && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-600 text-xs">IVA ({invoice.iva_percentage || 16}%)</span>
+                        <span className="font-medium text-gray-900">{formatCurrency(invoice.iva_amount)}</span>
+                      </div>
+                    )}
                     <div className="flex items-center justify-between pt-3 border-t border-gray-200">
                       <span className="font-medium text-gray-900">Total a Pagar</span>
                       <span className="text-2xl font-light text-blue-600">
@@ -400,7 +462,12 @@ Saludos cordiales.
                     <tr key={index} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-4 px-6">
                         <div>
-                          <p className="font-medium text-gray-900">{item.product_name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-900">{item.product_name}</p>
+                            {item.is_exempt && (
+                              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">Exento</span>
+                            )}
+                          </div>
                           <p className="text-sm text-gray-500">ID: {item.product_id}</p>
                         </div>
                       </td>
@@ -408,13 +475,17 @@ Saludos cordiales.
                         {item.quantity}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-900">
-                        {formatCurrency(item.unit_price)}
+                        {formatCurrency(item.price_per_unit)}
                       </td>
                       <td className="py-4 px-6 text-right text-gray-900">
-                        {item.tax_percent}%
+                        {item.is_exempt ? (
+                          <span className="text-green-600">Exento</span>
+                        ) : (
+                          `${item.tax_rate || 0}%`
+                        )}
                       </td>
                       <td className="py-4 px-6 text-right font-medium text-gray-900">
-                        {formatCurrency(item.quantity * item.unit_price)}
+                        {formatCurrency(item.quantity * item.price_per_unit)}
                       </td>
                     </tr>
                   ))}
@@ -466,14 +537,24 @@ Saludos cordiales.
               )}
 
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(invoice.subtotal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Impuestos</span>
-                  <span className="font-medium text-gray-900">{formatCurrency(invoice.tax_amount)}</span>
-                </div>
+                {invoice.taxable_base > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Base Imponible</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(invoice.taxable_base)}</span>
+                  </div>
+                )}
+                {invoice.exempt_amount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Monto Exento</span>
+                    <span className="font-medium text-green-700">{formatCurrency(invoice.exempt_amount)}</span>
+                  </div>
+                )}
+                {invoice.iva_amount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">IVA ({invoice.iva_percentage || 16}%)</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(invoice.iva_amount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
                   <span className="font-medium text-gray-900">Total</span>
                   <span className="text-lg font-light text-blue-600">
