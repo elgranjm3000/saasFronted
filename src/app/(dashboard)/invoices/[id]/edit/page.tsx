@@ -27,8 +27,9 @@ interface InvoiceItem {
   product_id: number;
   product_name: string;
   quantity: number;
-  unit_price: number;
+  unit_price: number; // Frontend usa unit_price
   tax_percent: number;
+  is_exempt: boolean;
 }
 
 interface InvoiceFormData {
@@ -41,6 +42,14 @@ interface InvoiceFormData {
   items: InvoiceItem[];
   notes: string;
   payment_terms: string;
+
+  // Venezuela SENIAT
+  transaction_type: 'contado' | 'credito';
+  payment_method: string;
+  credit_days: number;
+  iva_percentage: number;
+  customer_phone?: string;
+  customer_address?: string;
 }
 
 interface Customer {
@@ -73,7 +82,15 @@ const InvoiceEditPage = () => {
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     items: [],
     notes: '',
-    payment_terms: '30'
+    payment_terms: '30',
+
+    // Venezuela SENIAT
+    transaction_type: 'contado',
+    payment_method: 'efectivo',
+    credit_days: 0,
+    iva_percentage: 16,
+    customer_phone: '',
+    customer_address: ''
   });
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -171,6 +188,16 @@ const InvoiceEditPage = () => {
       const response = await invoicesAPI.getById(invoiceId);
       const invoice = response.data;
 
+      // Mapear items desde formato del backend al formato del frontend
+      const mappedItems = (invoice.items || []).map((item: any) => ({
+        product_id: item.product_id,
+        product_name: item.product_name || `Producto ${item.product_id}`,
+        quantity: item.quantity,
+        unit_price: item.price_per_unit || item.unit_price || 0, // Backend usa price_per_unit
+        tax_percent: item.tax_rate !== undefined ? item.tax_rate : (item.tax_percent || 16), // Backend usa tax_rate
+        is_exempt: item.is_exempt || false
+      }));
+
       setFormData({
         customer_id: invoice.customer_id,
         warehouse_id: invoice.warehouse_id || null,
@@ -178,9 +205,17 @@ const InvoiceEditPage = () => {
         discount: invoice.discount || 0,
         date: invoice.date || new Date().toISOString().split('T')[0],
         due_date: invoice.due_date || '',
-        items: invoice.items || [],
+        items: mappedItems,
         notes: invoice.notes || '',
-        payment_terms: invoice.payment_terms || '30'
+        payment_terms: invoice.payment_terms || '30',
+
+        // Venezuela SENIAT
+        transaction_type: invoice.transaction_type || 'contado',
+        payment_method: invoice.payment_method || 'efectivo',
+        credit_days: invoice.credit_days || 0,
+        iva_percentage: invoice.iva_percentage || 16,
+        customer_phone: invoice.customer_phone || '',
+        customer_address: invoice.customer_address || ''
       });
 
       const customer = customers.find(c => c.id === invoice.customer_id);
@@ -226,7 +261,8 @@ const InvoiceEditPage = () => {
       product_name: product.name,
       quantity: 1,
       unit_price: product.price,
-      tax_percent: 16
+      tax_percent: formData.iva_percentage, // Usar IVA general
+      is_exempt: false
     };
     setFormData(prev => ({
       ...prev,
@@ -256,17 +292,30 @@ const InvoiceEditPage = () => {
 
   const calculateTotals = () => {
     let subtotal = 0;
+    let taxableBase = 0;
+    let exemptAmount = 0;
     let tax = 0;
 
     formData.items.forEach(item => {
       const itemSubtotal = item.quantity * item.unit_price;
-      const itemTax = itemSubtotal * (item.tax_percent / 100);
+
+      if (item.is_exempt) {
+        // Producto exento - no lleva IVA
+        exemptAmount += itemSubtotal;
+      } else {
+        // Producto gravado
+        const itemTax = itemSubtotal * (item.tax_percent / 100);
+        taxableBase += itemSubtotal;
+        tax += itemTax;
+      }
+
       subtotal += itemSubtotal;
-      tax += itemTax;
     });
 
     return {
       subtotal,
+      taxableBase,
+      exemptAmount,
       tax,
       total: subtotal + tax
     };
@@ -310,10 +359,20 @@ const InvoiceEditPage = () => {
         due_date: formData.due_date,
         items: formData.items.map(item => ({
           product_id: item.product_id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          tax_rate: item.tax_percent, // Backend usa tax_rate
+          is_exempt: item.is_exempt
         })),
         notes: formData.notes,
-        payment_terms: formData.payment_terms
+        payment_terms: formData.payment_terms,
+
+        // Venezuela SENIAT
+        transaction_type: formData.transaction_type,
+        payment_method: formData.payment_method,
+        credit_days: formData.credit_days,
+        iva_percentage: formData.iva_percentage,
+        customer_phone: formData.customer_phone || undefined,
+        customer_address: formData.customer_address || undefined
       };
 
       await invoicesAPI.update(invoiceId, submitData);
