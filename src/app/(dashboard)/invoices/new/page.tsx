@@ -29,7 +29,8 @@ interface InvoiceItem {
   product_name: string;
   quantity: number;
   unit_price: number;
-  tax_percent: number;
+  tax_percent: number; // 16, 8, 0
+  is_exempt: boolean; // Productos exentos
 }
 
 interface InvoiceFormData {
@@ -42,6 +43,14 @@ interface InvoiceFormData {
   items: InvoiceItem[];
   notes: string;
   payment_terms: string;
+
+  // Venezuela SENIAT
+  transaction_type: 'contado' | 'credito';
+  payment_method: string;
+  credit_days: number;
+  iva_percentage: number; // 16, 8, 0
+  customer_phone?: string;
+  customer_address?: string;
 }
 
 interface Customer {
@@ -74,7 +83,13 @@ const InvoiceFormPage = () => {
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     items: [],
     notes: '',
-    payment_terms: '30'
+    payment_terms: '30',
+
+    // Venezuela - valores por defecto
+    transaction_type: 'contado',
+    payment_method: 'efectivo',
+    credit_days: 0,
+    iva_percentage: 16
   });
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -228,7 +243,8 @@ const InvoiceFormPage = () => {
       product_name: product.name,
       quantity: 1,
       unit_price: product.price,
-      tax_percent: 16
+      tax_percent: 16, // Por defecto 16%
+      is_exempt: false // Por defecto no exento
     };
     setFormData(prev => ({
       ...prev,
@@ -258,17 +274,30 @@ const InvoiceFormPage = () => {
 
   const calculateTotals = () => {
     let subtotal = 0;
+    let taxableBase = 0;
+    let exemptAmount = 0;
     let tax = 0;
 
     formData.items.forEach(item => {
       const itemSubtotal = item.quantity * item.unit_price;
-      const itemTax = itemSubtotal * (item.tax_percent / 100);
+
+      if (item.is_exempt) {
+        // Producto exento - no lleva IVA
+        exemptAmount += itemSubtotal;
+      } else {
+        // Producto gravado
+        const itemTax = itemSubtotal * (item.tax_percent / 100);
+        taxableBase += itemSubtotal;
+        tax += itemTax;
+      }
+
       subtotal += itemSubtotal;
-      tax += itemTax;
     });
 
     return {
       subtotal,
+      taxableBase,
+      exemptAmount,
       tax,
       total: subtotal + tax
     };
@@ -312,10 +341,20 @@ const InvoiceFormPage = () => {
         due_date: formData.due_date,
         items: formData.items.map(item => ({
           product_id: item.product_id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          tax_rate: item.tax_percent,
+          is_exempt: item.is_exempt
         })),
         notes: formData.notes,
-        payment_terms: formData.payment_terms
+        payment_terms: formData.payment_terms,
+
+        // Venezuela SENIAT
+        transaction_type: formData.transaction_type,
+        payment_method: formData.payment_method,
+        credit_days: formData.credit_days,
+        iva_percentage: formData.iva_percentage,
+        customer_phone: formData.customer_phone,
+        customer_address: formData.customer_address
       };
 
       // LOG DETALLADO - Ver exactamente qué se envía
@@ -625,6 +664,108 @@ const InvoiceFormPage = () => {
                     <option value="60">60 días</option>
                     <option value="90">90 días</option>
                   </select>
+                </div>
+
+                {/* Venezuela SENIAT Fields */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Campos Venezuela (SENIAT)</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Tipo de Transacción */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Tipo Transacción *
+                      </label>
+                      <select
+                        value={formData.transaction_type}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transaction_type: e.target.value as 'contado' | 'credito' }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value="contado">Contado</option>
+                        <option value="credito">Crédito</option>
+                      </select>
+                    </div>
+
+                    {/* Forma de Pago */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Forma de Pago
+                      </label>
+                      <select
+                        value={formData.payment_method}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="debito">Tarjeta Débito</option>
+                        <option value="credito">Tarjeta Crédito</option>
+                        <option value="zelle">Zelle</option>
+                        <option value="pago_movil">Pago Móvil</option>
+                      </select>
+                    </div>
+
+                    {/* Días de Crédito */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Días Crédito
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.credit_days}
+                        onChange={(e) => setFormData(prev => ({ ...prev, credit_days: parseInt(e.target.value) || 0 }))}
+                        min="0"
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        disabled={formData.transaction_type === 'contado'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Porcentaje IVA */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        IVA General (%)
+                      </label>
+                      <select
+                        value={formData.iva_percentage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, iva_percentage: parseFloat(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value={16}>16% (General)</option>
+                        <option value={8}>8% (Reducido)</option>
+                        <option value={0}>0% (Exento)</option>
+                      </select>
+                    </div>
+
+                    {/* Teléfono Cliente */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Teléfono Cliente
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.customer_phone || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, customer_phone: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        placeholder="+58 414-000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dirección Cliente */}
+                  <div className="mt-6">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Dirección Cliente
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customer_address || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customer_address: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      placeholder="Av. Principal con calle..."
+                    />
+                  </div>
                 </div>
               </div>
             </div>
