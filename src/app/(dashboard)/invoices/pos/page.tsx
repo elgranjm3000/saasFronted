@@ -80,6 +80,9 @@ const POSPage = () => {
   const [success, setSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // Mobile cart toggle
+  const [showCart, setShowCart] = useState(false);
+
   // Venezuela SENIAT fields
   const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
   const [paymentMethod, setPaymentMethod] = useState('efectivo');
@@ -358,9 +361,9 @@ const POSPage = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             <Link
               href="/invoices"
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
@@ -368,15 +371,28 @@ const POSPage = () => {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-2xl font-light text-gray-900">Punto de Venta</h1>
-              <p className="text-sm text-gray-500">Sistema de ventas rápidas</p>
+              <h1 className="text-xl md:text-2xl font-light text-gray-900">Punto de Venta</h1>
+              <p className="text-xs md:text-sm text-gray-500 hidden sm:block">Sistema de ventas rápidas</p>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 md:space-x-3">
+            {/* Mobile cart toggle */}
+            <button
+              onClick={() => setShowCart(!showCart)}
+              className="lg:hidden relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {cart.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-blue-600 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                  {cart.length}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
+              className="hidden sm:block p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
               title={viewMode === 'grid' ? 'Vista de lista' : 'Vista de grid'}
             >
               {viewMode === 'grid' ? <List className="w-5 h-5" /> : <LayoutGrid className="w-5 h-5" />}
@@ -387,7 +403,7 @@ const POSPage = () => {
 
       {/* Success Message */}
       {success && (
-        <div className="mx-6 mt-4 bg-green-50/80 border border-green-200 rounded-2xl p-4">
+        <div className="mx-4 md:mx-6 mt-4 bg-green-50/80 border border-green-200 rounded-2xl p-4">
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">Venta realizada correctamente</p>
@@ -397,7 +413,7 @@ const POSPage = () => {
 
       {/* Error Message */}
       {errors.general && (
-        <div className="mx-6 mt-4 bg-red-50/80 border border-red-200 rounded-2xl p-4">
+        <div className="mx-4 md:mx-6 mt-4 bg-red-50/80 border border-red-200 rounded-2xl p-4">
           <div className="flex items-center">
             <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
             <p className="text-red-600">{errors.general}</p>
@@ -406,29 +422,29 @@ const POSPage = () => {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         {/* Products Section */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           {/* Search Bar */}
-          <div className="p-6 pb-2">
+          <div className="p-3 md:p-6 pb-2">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Search className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 md:w-5 md:h-5" />
               <input
                 type="text"
-                placeholder="Buscar productos por nombre o código..."
+                placeholder="Buscar productos..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-4 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+                className="w-full pl-9 md:pl-12 pr-3 md:pr-4 py-2 md:py-4 bg-white border border-gray-200 rounded-xl md:rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-lg"
                 autoFocus
               />
             </div>
           </div>
 
           {/* Products Grid/List */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-3 md:p-6">
             {/* Product count indicator */}
             {filteredProducts.length > 0 && (
-              <div className="mb-4 text-sm text-gray-500">
+              <div className="mb-3 md:mb-4 text-xs md:text-sm text-gray-500">
                 Mostrando <span className="font-medium text-gray-900">{filteredProducts.length}</span> productos
                 {selectedWarehouse && (
                   <span> en <span className="font-medium text-gray-900">{selectedWarehouse.name}</span></span>
@@ -437,27 +453,27 @@ const POSPage = () => {
             )}
 
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-4">
                 {filteredProducts.map(product => (
                   <button
                     key={product.id}
                     onClick={() => addToCart(product)}
-                    className="bg-white rounded-2xl p-4 hover:shadow-lg hover:scale-105 transition-all border border-gray-100 group"
+                    className="bg-white rounded-xl md:rounded-2xl p-2 md:p-4 hover:shadow-lg hover:scale-105 transition-all border border-gray-100 group"
                   >
-                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl mb-3 flex items-center justify-center">
-                      <Package className="w-12 h-12 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg md:rounded-xl mb-2 md:mb-3 flex items-center justify-center">
+                      <Package className="w-8 h-8 md:w-12 md:h-12 text-gray-400 group-hover:text-blue-500 transition-colors" />
                     </div>
-                    <h3 className="font-medium text-gray-900 text-sm mb-1 line-clamp-2 min-h-[2.5rem]">
+                    <h3 className="font-medium text-gray-900 text-xs md:text-sm mb-1 line-clamp-2 min-h-[1.5rem] md:min-h-[2.5rem]">
                       {product.name}
                     </h3>
-                    <p className="text-xs text-gray-500 mb-2">{product.sku}</p>
+                    <p className="text-[10px] md:text-xs text-gray-500 mb-1 md:mb-2 hidden sm:block">{product.sku}</p>
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-blue-600">
+                      <span className="text-sm md:text-lg font-bold text-blue-600">
                         {formatCurrency(product.price)}
                       </span>
                       {product.stock_quantity !== undefined && (
-                        <span className="text-xs text-gray-500">
-                          Stock: {product.stock_quantity}
+                        <span className="text-[10px] md:text-xs text-gray-500">
+                          {product.stock_quantity}
                         </span>
                       )}
                     </div>
@@ -514,8 +530,33 @@ const POSPage = () => {
           </div>
         </div>
 
-        {/* Cart Sidebar */}
-        <div className="w-96 bg-white border-l border-gray-200 flex flex-col">
+        {/* Cart Sidebar - Responsive */}
+        {/* Mobile backdrop */}
+        {showCart && (
+          <div
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setShowCart(false)}
+          />
+        )}
+
+        {/* Sidebar - Desktop (fixed) / Mobile (drawer) */}
+        <div className={`
+          fixed lg:relative inset-y-0 right-0 z-50
+          w-full sm:w-96 lg:w-96
+          bg-white border-l border-gray-200 flex flex-col
+          transform transition-transform duration-300 ease-in-out
+          ${showCart ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+        `}>
+          {/* Mobile close button */}
+          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Carrito</h2>
+            <button
+              onClick={() => setShowCart(false)}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
           {/* Customer Selection */}
           <div className="p-4 border-b border-gray-200">
             <label className="block text-sm font-medium text-gray-700 mb-2">
