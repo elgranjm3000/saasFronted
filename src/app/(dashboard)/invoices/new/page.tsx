@@ -851,7 +851,7 @@ const InvoiceFormPage = () => {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-5 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Cantidad
@@ -883,27 +883,45 @@ const InvoiceFormPage = () => {
 
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Impuesto %
+                              IVA %
                             </label>
-                            <div className="relative">
-                              <Percent className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+                            <select
+                              value={item.tax_percent}
+                              onChange={(e) => updateItem(index, 'tax_percent', parseFloat(e.target.value))}
+                              disabled={item.is_exempt}
+                              className={`w-full px-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                item.is_exempt ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-gray-200'
+                              }`}
+                            >
+                              <option value={16}>16%</option>
+                              <option value={8}>8%</option>
+                              <option value={0}>0%</option>
+                            </select>
+                          </div>
+
+                          <div className="flex items-end">
+                            <label className="flex items-center space-x-2 mb-3 cursor-pointer">
                               <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={item.tax_percent}
-                                onChange={(e) => updateItem(index, 'tax_percent', parseFloat(e.target.value))}
-                                className="w-full pl-7 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                type="checkbox"
+                                checked={item.is_exempt}
+                                onChange={(e) => updateItem(index, 'is_exempt', e.target.checked)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                               />
-                            </div>
+                              <span className="text-xs font-medium text-gray-700">Exento</span>
+                            </label>
                           </div>
 
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Subtotal
                             </label>
-                            <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-900">
-                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm">
+                              <span className={`font-medium ${item.is_exempt ? 'text-green-700' : 'text-gray-900'}`}>
+                                ${(item.quantity * item.unit_price).toFixed(2)}
+                              </span>
+                              {item.is_exempt && (
+                                <span className="block text-xs text-green-600">Exento</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -970,7 +988,8 @@ const InvoiceFormPage = () => {
               <h3 className="text-xl font-light text-gray-900">Resumen</h3>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* Subtotal */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium text-gray-900">
@@ -978,22 +997,65 @@ const InvoiceFormPage = () => {
                   </span>
                 </div>
 
+                {/* Venezuela - Base Imponible */}
+                {totals.taxableBase > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-500">Base Imponible</span>
+                    <span className="text-sm text-gray-700">
+                      {formatCurrency(totals.taxableBase)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Venezuela - Monto Exento */}
+                {totals.exemptAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-green-600">Monto Exento</span>
+                    <span className="text-sm text-green-700">
+                      {formatCurrency(totals.exemptAmount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* IVA */}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Impuestos</span>
+                  <span className="text-gray-600">IVA ({formData.iva_percentage}%)</span>
                   <span className="font-medium text-gray-900">
                     {formatCurrency(totals.tax)}
                   </span>
                 </div>
 
+                {/* Total */}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <span className="font-medium text-gray-900">Total</span>
+                  <span className="font-semibold text-gray-900">Total</span>
                   <span className="text-2xl font-light text-blue-600">
                     {formatCurrency(totals.total)}
                   </span>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-2xl">
+              {/* Venezuela Info */}
+              {(totals.taxableBase > 0 || totals.exemptAmount > 0) && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-600 mb-2 font-medium">Desglose IVA (Venezuela):</p>
+                  <div className="space-y-1">
+                    {totals.taxableBase > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Operaciones gravadas:</span>
+                        <span className="text-gray-700">{formatCurrency(totals.taxableBase)}</span>
+                      </div>
+                    )}
+                    {totals.exemptAmount > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-green-600">Operaciones exentas:</span>
+                        <span className="text-green-700">{formatCurrency(totals.exemptAmount)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 p-4 bg-blue-50 rounded-2xl">
                 <p className="text-sm text-blue-900">
                   <span className="font-medium">Items:</span> {formData.items.length}
                 </p>
