@@ -33,13 +33,19 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await apiClient.post('/auth/login', {
+      const requestData = {
         username: formData.username,
         password: formData.password,
         company_tax_id: formData.company_tax_id || undefined
-      });
+      };
+
+      console.log('🔐 Sending login request:', JSON.stringify(requestData, null, 2));
+      console.log('🌐 URL:', `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'}/auth/login`);
+
+      const response = await apiClient.post('/auth/login', requestData);
 
       console.log('✅ Login response:', response.data);
+      console.log('✅ Response status:', response.status);
       const { access_token, user } = response.data;
 
       // Set auth in store (saves to localStorage via persist middleware)
@@ -58,11 +64,19 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (error: any) {
       console.error('❌ Login error:', error);
-      setError(
-        error.response?.data?.detail ||
-        error.response?.data?.message ||
-        'Credenciales incorrectas. Inténtalo de nuevo.'
-      );
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error data:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      console.error('❌ Error message:', error.message);
+
+      // Mostrar error detallado para debug
+      const errorMessage = error.response?.data?.detail ||
+                          error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          (error.response?.status === 500 ? 'Error interno del servidor (500). Verifica que el backend esté corriendo correctamente.' : error.message) ||
+                          'Credenciales incorrectas. Inténtalo de nuevo.';
+
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }

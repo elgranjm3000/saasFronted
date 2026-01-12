@@ -59,6 +59,8 @@ interface Customer {
 interface CartItem {
   product: Product;
   quantity: number;
+  tax_percent: number; // 16, 8, 0
+  is_exempt: boolean;
 }
 
 const POSPage = () => {
@@ -77,6 +79,14 @@ const POSPage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Venezuela SENIAT fields
+  const [transactionType, setTransactionType] = useState<'contado' | 'credito'>('contado');
+  const [paymentMethod, setPaymentMethod] = useState('efectivo');
+  const [creditDays, setCreditDays] = useState(0);
+  const [ivaPercentage, setIvaPercentage] = useState(16);
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
 
   const router = useRouter();
 
@@ -163,7 +173,12 @@ const POSPage = () => {
             : item
         );
       }
-      return [...prevCart, { product, quantity: 1 }];
+      return [...prevCart, {
+        product,
+        quantity: 1,
+        tax_percent: ivaPercentage, // Usar IVA general
+        is_exempt: false
+      }];
     });
   };
 
@@ -190,14 +205,34 @@ const POSPage = () => {
   };
 
   const calculateTotals = () => {
-    const subtotal = cart.reduce(
-      (sum, item) => sum + item.product.price * item.quantity,
-      0
-    );
-    const tax = subtotal * 0.16; // 16% IVA
-    const total = subtotal + tax;
+    let subtotal = 0;
+    let taxableBase = 0;
+    let exemptAmount = 0;
+    let tax = 0;
 
-    return { subtotal, tax, total };
+    cart.forEach(item => {
+      const itemSubtotal = item.product.price * item.quantity;
+
+      if (item.is_exempt) {
+        // Producto exento - no lleva IVA
+        exemptAmount += itemSubtotal;
+      } else {
+        // Producto gravado
+        const itemTax = itemSubtotal * (item.tax_percent / 100);
+        taxableBase += itemSubtotal;
+        tax += itemTax;
+      }
+
+      subtotal += itemSubtotal;
+    });
+
+    return {
+      subtotal,
+      taxableBase,
+      exemptAmount,
+      tax,
+      total: subtotal + tax
+    };
   };
 
   const handleCheckout = async () => {
@@ -228,10 +263,20 @@ const POSPage = () => {
         due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         items: cart.map(item => ({
           product_id: item.product.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          tax_rate: item.tax_percent,
+          is_exempt: item.is_exempt
         })),
         notes: 'Venta desde POS',
-        payment_terms: '0'
+        payment_terms: '0',
+
+        // Venezuela SENIAT
+        transaction_type: transactionType,
+        payment_method: paymentMethod,
+        credit_days: creditDays,
+        iva_percentage: ivaPercentage,
+        customer_phone: customerPhone || undefined,
+        customer_address: customerAddress || undefined
       };
 
       await invoicesAPI.create(invoiceData);
@@ -277,7 +322,7 @@ const POSPage = () => {
     c?.email?.toLowerCase().includes(customerSearch.toLowerCase())
   );
 
-  const { subtotal, tax, total } = calculateTotals();
+  const { subtotal, taxableBase, exemptAmount, tax, total } = calculateTotals();
 
   const updateProductStock = async (productId: number, warehouseId: number, quantitySold: number) => {
     try {
@@ -619,7 +664,7 @@ const POSPage = () => {
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center space-x-2">
                         <button
                           onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
@@ -639,12 +684,54 @@ const POSPage = () => {
                       </div>
 
                       <div className="text-right">
-                        <p className="font-bold text-gray-900">
+                        <p className={`font-bold ${item.is_exempt ? 'text-green-700' : 'text-gray-900'}`}>
                           {formatCurrency(item.product.price * item.quantity)}
                         </p>
                         <p className="text-xs text-gray-500">
                           {formatCurrency(item.product.price)} c/u
                         </p>
+                      </div>
+                    </div>
+
+                    {/* Venezuela - IVA por item */}
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs">
+                      <div className="flex items-center space-x-2">
+                        <select
+                          value={item.tax_percent}
+                          onChange={(e) => {
+                            const newTaxPercent = Number(e.target.value);
+                            setCart(cart.map(i =>
+                              i.product.id === item.product.id
+                                ? { ...i, tax_percent: newTaxPercent }
+                                : i
+                            ));
+                          }}
+                          disabled={item.is_exempt}
+                          className={`px-2 py-1 rounded border text-xs ${
+                            item.is_exempt
+                              ? 'bg-gray-100 text-gray-400 border-gray-200'
+                              : 'bg-white border-gray-300 text-gray-900'
+                          }`}
+                        >
+                          <option value={16}>IVA 16%</option>
+                          <option value={8}>IVA 8%</option>
+                          <option value={0}>IVA 0%</option>
+                        </select>
+                        <label className="flex items-center space-x-1">
+                          <input
+                            type="checkbox"
+                            checked={item.is_exempt}
+                            onChange={(e) => {
+                              setCart(cart.map(i =>
+                                i.product.id === item.product.id
+                                  ? { ...i, is_exempt: e.target.checked }
+                                  : i
+                              ));
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className={item.is_exempt ? 'text-green-700 font-medium' : 'text-gray-600'}>Exento</span>
+                        </label>
                       </div>
                     </div>
                   </div>
@@ -655,15 +742,95 @@ const POSPage = () => {
 
           {/* Cart Footer */}
           <div className="border-t border-gray-200 p-4 space-y-3">
+            {/* Venezuela SENIAT Fields - Compact */}
+            {cart.length > 0 && (
+              <div className="space-y-2 pb-3 border-b border-gray-200">
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Tipo de Transacción */}
+                  <select
+                    value={transactionType}
+                    onChange={(e) => setTransactionType(e.target.value as 'contado' | 'credito')}
+                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="contado">Contado</option>
+                    <option value="credito">Crédito</option>
+                  </select>
+
+                  {/* Forma de Pago */}
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="zelle">Zelle</option>
+                    <option value="pago_movil">Pago Móvil</option>
+                    <option value="tarjeta_credito">T. Crédito</option>
+                    <option value="tarjeta_debito">T. Débito</option>
+                  </select>
+                </div>
+
+                {/* Días de Crédito - Solo si es crédito */}
+                {transactionType === 'credito' && (
+                  <input
+                    type="number"
+                    value={creditDays}
+                    onChange={(e) => setCreditDays(Number(e.target.value))}
+                    placeholder="Días de crédito"
+                    min="0"
+                    className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                )}
+
+                {/* Teléfono y Dirección Cliente */}
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    type="text"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Teléfono cliente"
+                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <input
+                    type="text"
+                    value={customerAddress}
+                    onChange={(e) => setCustomerAddress(e.target.value)}
+                    placeholder="Dirección cliente"
+                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Totals */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Subtotal</span>
                 <span className="font-medium text-gray-900">{formatCurrency(subtotal)}</span>
               </div>
+
+              {/* Venezuela - Base Imponible */}
+              {taxableBase > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">Base Imponible</span>
+                  <span className="text-gray-700">{formatCurrency(taxableBase)}</span>
+                </div>
+              )}
+
+              {/* Venezuela - Monto Exento */}
+              {exemptAmount > 0 && (
+                <div className="flex justify-between text-xs">
+                  <span className="text-green-600">Monto Exento</span>
+                  <span className="text-green-700 font-medium">{formatCurrency(exemptAmount)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-sm">
-                <span className="text-gray-600">IVA (16%)</span>
+                <span className="text-gray-600">IVA ({ivaPercentage}%)</span>
                 <span className="font-medium text-gray-900">{formatCurrency(tax)}</span>
               </div>
+
               <div className="flex justify-between pt-2 border-t border-gray-200">
                 <span className="font-bold text-gray-900">Total</span>
                 <span className="text-2xl font-bold text-blue-600">{formatCurrency(total)}</span>
