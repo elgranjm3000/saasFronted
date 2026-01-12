@@ -23,7 +23,8 @@ import {
   CreditCard,
   AlertTriangle,
   MoreVertical,
-  Eye
+  Eye,
+  X
 } from 'lucide-react';
 import { invoicesAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -86,6 +87,7 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -274,6 +276,13 @@ Saludos cordiales.
           </div>
 
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowPDFPreview(true)}
+              className="p-3 text-blue-500 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-colors"
+              title="Vista previa PDF (SENIAT)"
+            >
+              <Eye className="w-5 h-5" />
+            </button>
             <button
               onClick={handlePrint}
               className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
@@ -630,6 +639,162 @@ Saludos cordiales.
           </div>
         </div>
       </div>
+
+      {/* PDF Preview Modal - Venezuela SENIAT Format */}
+      {showPDFPreview && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-light text-gray-900">Vista Previa - Formato SENIAT</h2>
+              <button
+                onClick={() => setShowPDFPreview(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* PDF Preview Content */}
+            <div className="p-8 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 80px)' }}>
+              <div className="bg-white border-2 border-gray-300 p-8 font-mono text-sm" style={{ width: '210mm', minHeight: '297mm' }}>
+                {/* Header SENIAT */}
+                <div className="text-center border-b-2 border-black pb-4 mb-6">
+                  <h1 className="text-xl font-bold uppercase">Factura de Venta</h1>
+                  <p className="text-xs mt-2">FORMATO SENIAT VENEZUELA</p>
+                </div>
+
+                {/* Company Info */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <p className="font-bold">RIF: J-XXXXXXXX-X</p>
+                    <p className="text-xs">Nombre de la Empresa</p>
+                    <p className="text-xs">Dirección Fiscal</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold">Nro. Factura: {invoice.invoice_number}</p>
+                    <p className="text-xs">Nro. Control: {invoice.control_number || 'Pendiente'}</p>
+                    <p className="text-xs">Fecha: {formatDate(invoice.date, 'long')}</p>
+                  </div>
+                </div>
+
+                {/* Customer Info */}
+                <div className="mb-6 p-3 bg-gray-50 border border-gray-300">
+                  <p className="font-bold mb-2">CLIENTE:</p>
+                  <p className="text-xs">Nombre: {invoice.customer?.name || '-'}</p>
+                  <p className="text-xs">RIF/C.I: {invoice.customer?.tax_id || 'Pendiente'}</p>
+                  <p className="text-xs">Dirección: {invoice.customer_address || invoice.customer?.address || '-'}</p>
+                  <p className="text-xs">Teléfono: {invoice.customer_phone || invoice.customer?.phone || '-'}</p>
+                </div>
+
+                {/* Transaction Info */}
+                <div className="mb-6 grid grid-cols-3 gap-4 text-xs">
+                  <div className="p-2 border border-gray-300">
+                    <p className="font-bold">Tipo Transacción:</p>
+                    <p className="capitalize">{invoice.transaction_type || 'Contado'}</p>
+                  </div>
+                  <div className="p-2 border border-gray-300">
+                    <p className="font-bold">Forma de Pago:</p>
+                    <p className="capitalize">{invoice.payment_method?.replace('_', ' ') || 'Efectivo'}</p>
+                  </div>
+                  {invoice.transaction_type === 'credito' && (
+                    <div className="p-2 border border-gray-300">
+                      <p className="font-bold">Días Crédito:</p>
+                      <p>{invoice.credit_days || 0}</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Items Table */}
+                <table className="w-full mb-6 text-xs">
+                  <thead>
+                    <tr className="border-b-2 border-black">
+                      <th className="text-left py-2">CANT</th>
+                      <th className="text-left py-2">DESCRIPCIÓN</th>
+                      <th className="text-right py-2">P. UNITARIO</th>
+                      <th className="text-right py-2">ALIQUOTA</th>
+                      <th className="text-right py-2">MONTO IVA</th>
+                      <th className="text-right py-2">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoice.items?.map((item, index) => (
+                      <tr key={index} className="border-b border-gray-300">
+                        <td className="py-2 text-center">{item.quantity}</td>
+                        <td className="py-2">{item.product_name}</td>
+                        <td className="py-2 text-right">{formatCurrency(item.price_per_unit)}</td>
+                        <td className="py-2 text-center">
+                          {item.is_exempt ? 'EXENTO' : `${item.tax_rate || 0}%`}
+                        </td>
+                        <td className="py-2 text-right">
+                          {item.is_exempt ? '0,00' : formatCurrency((item.quantity * item.price_per_unit) * ((item.tax_rate || 0) / 100))}
+                        </td>
+                        <td className="py-2 text-right">
+                          {formatCurrency(item.quantity * item.price_per_unit)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Totals */}
+                <div className="grid grid-cols-2 gap-6 text-xs">
+                  <div className="space-y-2">
+                    {invoice.taxable_base > 0 && (
+                      <div className="flex justify-between border-b border-gray-300 pb-1">
+                        <span>Base Imponible:</span>
+                        <span className="font-bold">{formatCurrency(invoice.taxable_base)}</span>
+                      </div>
+                    )}
+                    {invoice.exempt_amount > 0 && (
+                      <div className="flex justify-between border-b border-gray-300 pb-1 text-green-700">
+                        <span>Monto Exento:</span>
+                        <span className="font-bold">{formatCurrency(invoice.exempt_amount)}</span>
+                      </div>
+                    )}
+                    {invoice.iva_amount > 0 && (
+                      <div className="flex justify-between border-b border-gray-300 pb-1">
+                        <span>IVA ({invoice.iva_percentage || 16}%):</span>
+                        <span className="font-bold">{formatCurrency(invoice.iva_amount)}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-2 border-black p-4">
+                    <div className="flex justify-between text-lg">
+                      <span className="font-bold">TOTAL:</span>
+                      <span className="font-bold">{formatCurrency(invoice.total_amount)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-8 pt-4 border-t-2 border-black text-center text-xs">
+                  <p className="mb-2">___________________________</p>
+                  <p>Firma del Cliente</p>
+                  <p className="mt-4 text-gray-600">Esta factura cumple con los requisitos del SENIAT</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+              <button
+                onClick={() => setShowPDFPreview(false)}
+                className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-100"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={handlePrint}
+                className="px-6 py-3 text-white bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl hover:from-blue-600 hover:to-blue-700"
+              >
+                <Printer className="w-4 h-4 mr-2 inline" />
+                Imprimir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
