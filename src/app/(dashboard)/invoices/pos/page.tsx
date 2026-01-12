@@ -176,6 +176,8 @@ const POSPage = () => {
             : item
         );
       }
+      // Auto-open cart on mobile when adding first item
+      setShowCart(true);
       return [...prevCart, {
         product,
         quantity: 1,
