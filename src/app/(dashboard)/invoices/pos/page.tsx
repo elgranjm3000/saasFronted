@@ -741,131 +741,130 @@ const POSPage = () => {
           </div>
 
           {/* Cart Footer */}
-          <div className="border-t border-gray-200 p-4 space-y-3">
-            {/* Venezuela SENIAT Fields - Compact */}
-            {cart.length > 0 && (
-              <div className="space-y-2 pb-3 border-b border-gray-200">
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Tipo de Transacción */}
-                  <select
-                    value={transactionType}
-                    onChange={(e) => setTransactionType(e.target.value as 'contado' | 'credito')}
-                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="contado">Contado</option>
-                    <option value="credito">Crédito</option>
-                  </select>
-
-                  {/* Forma de Pago */}
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia</option>
-                    <option value="zelle">Zelle</option>
-                    <option value="pago_movil">Pago Móvil</option>
-                    <option value="tarjeta_credito">T. Crédito</option>
-                    <option value="tarjeta_debito">T. Débito</option>
-                  </select>
+          <div className="border-t border-gray-200 bg-gray-50">
+            {/* Total destacado */}
+            <div className="px-4 py-3 bg-white border-b border-gray-200">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">Total a pagar</p>
+                  <p className="text-3xl font-bold text-gray-900">{formatCurrency(total)}</p>
                 </div>
-
-                {/* Días de Crédito - Solo si es crédito */}
-                {transactionType === 'credito' && (
-                  <input
-                    type="number"
-                    value={creditDays}
-                    onChange={(e) => setCreditDays(Number(e.target.value))}
-                    placeholder="Días de crédito"
-                    min="0"
-                    className="w-full px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                )}
-
-                {/* Teléfono y Dirección Cliente */}
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                    placeholder="Teléfono cliente"
-                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  <input
-                    type="text"
-                    value={customerAddress}
-                    onChange={(e) => setCustomerAddress(e.target.value)}
-                    placeholder="Dirección cliente"
-                    className="px-2 py-2 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <div className="text-right text-xs text-gray-500">
+                  {taxableBase > 0 && <p>Base: {formatCurrency(taxableBase)}</p>}
+                  {exemptAmount > 0 && <p className="text-green-600">Exento: {formatCurrency(exemptAmount)}</p>}
+                  <p>IVA: {formatCurrency(tax)}</p>
+                  <p className="font-medium text-gray-900">{cart.length} items</p>
                 </div>
-              </div>
-            )}
-
-            {/* Totals */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="font-medium text-gray-900">{formatCurrency(subtotal)}</span>
-              </div>
-
-              {/* Venezuela - Base Imponible */}
-              {taxableBase > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Base Imponible</span>
-                  <span className="text-gray-700">{formatCurrency(taxableBase)}</span>
-                </div>
-              )}
-
-              {/* Venezuela - Monto Exento */}
-              {exemptAmount > 0 && (
-                <div className="flex justify-between text-xs">
-                  <span className="text-green-600">Monto Exento</span>
-                  <span className="text-green-700 font-medium">{formatCurrency(exemptAmount)}</span>
-                </div>
-              )}
-
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">IVA ({ivaPercentage}%)</span>
-                <span className="font-medium text-gray-900">{formatCurrency(tax)}</span>
-              </div>
-
-              <div className="flex justify-between pt-2 border-t border-gray-200">
-                <span className="font-bold text-gray-900">Total</span>
-                <span className="text-2xl font-bold text-blue-600">{formatCurrency(total)}</span>
               </div>
             </div>
 
-            <div className="flex items-center space-x-2">
+            {/* Botón de cobrar prominente */}
+            <div className="p-4">
               <button
                 onClick={handleCheckout}
                 disabled={loading || cart.length === 0 || !selectedCustomer}
-                className="flex-1 flex items-center justify-center px-4 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full flex items-center justify-center px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white text-lg rounded-xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.01] shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none mb-3"
               >
                 {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 ) : (
                   <>
-                    <CreditCard className="w-5 h-5 mr-2" />
-                    <span className="font-bold">Cobrar</span>
+                    <DollarSign className="w-6 h-6 mr-2" />
+                    <span className="font-bold">COBRAR</span>
                   </>
                 )}
               </button>
 
+              {/* Expandable Venezuela fields */}
+              {cart.length > 0 && (
+                <details className="group">
+                  <summary className="flex items-center justify-between cursor-pointer px-3 py-2 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm">
+                    <span className="text-gray-700 font-medium">⚙️ Datos de facturación</span>
+                    <span className="text-gray-400 group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-gray-200 space-y-2">
+                    {/* Fila 1: Tipo y Forma de pago */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Tipo</label>
+                        <select
+                          value={transactionType}
+                          onChange={(e) => setTransactionType(e.target.value as 'contado' | 'credito')}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="contado">Contado</option>
+                          <option value="credito">Crédito</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pago</label>
+                        <select
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="efectivo">Efectivo</option>
+                          <option value="transferencia">Transferencia</option>
+                          <option value="zelle">Zelle</option>
+                          <option value="pago_movil">Pago Móvil</option>
+                          <option value="tarjeta_credito">T. Crédito</option>
+                          <option value="tarjeta_debito">T. Débito</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Días de crédito - solo si es crédito */}
+                    {transactionType === 'credito' && (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Días de crédito</label>
+                        <input
+                          type="number"
+                          value={creditDays}
+                          onChange={(e) => setCreditDays(Number(e.target.value))}
+                          placeholder="0"
+                          min="0"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    )}
+
+                    {/* Teléfono y dirección */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Teléfono</label>
+                        <input
+                          type="text"
+                          value={customerPhone}
+                          onChange={(e) => setCustomerPhone(e.target.value)}
+                          placeholder="Opcional"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Dirección</label>
+                        <input
+                          type="text"
+                          value={customerAddress}
+                          onChange={(e) => setCustomerAddress(e.target.value)}
+                          placeholder="Opcional"
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              )}
+
+              {/* Botón vaciar carrito */}
               {cart.length > 0 && (
                 <button
                   onClick={clearCart}
-                  className="px-4 py-4 text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition-colors"
-                  title="Vaciar carrito"
+                  className="w-full mt-3 flex items-center justify-center px-4 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl transition-colors text-sm font-medium"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Vaciar carrito
                 </button>
               )}
-            </div>
-
-            <div className="text-center text-sm text-gray-500">
-              <span className="font-medium">{cart.length}</span> productos en el carrito
             </div>
           </div>
         </div>
