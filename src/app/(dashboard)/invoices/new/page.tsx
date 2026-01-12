@@ -124,7 +124,11 @@ const InvoiceFormPage = () => {
   // Fetch products for selected warehouse
   useEffect(() => {
     if (formData.warehouse_id) {
+      console.log('🔍 Warehouse seleccionado:', formData.warehouse_id);
       fetchProductsForWarehouse(formData.warehouse_id);
+    } else {
+      console.log('⚠️ No warehouse seleccionado, limpiando productos');
+      setProducts([]);
     }
   }, [formData.warehouse_id]);
 
@@ -139,14 +143,20 @@ const InvoiceFormPage = () => {
 
   const fetchProductsForWarehouse = async (warehouseId: number) => {
     try {
+      console.log('📦 Buscando productos para almacén:', warehouseId);
+
       // Get warehouse-products: [{warehouse_id, product_id, stock}, ...]
       const warehouseProductsResponse = await warehousesAPI.getProducts(warehouseId);
       const warehouseProducts = warehouseProductsResponse.data || [];
+
+      console.log('📦 Respuesta warehouse-products:', warehouseProducts);
+      console.log('📦 Cantidad de productos encontrados:', warehouseProducts.length);
 
       // Fetch complete product details for each product_id
       const productsWithStock = await Promise.all(
         warehouseProducts.map(async (wp: any) => {
           try {
+            console.log('📦 Obteniendo detalles del producto:', wp.product_id);
             const productResponse = await productsAPI.getById(wp.product_id);
             const product = productResponse.data;
 
@@ -157,7 +167,7 @@ const InvoiceFormPage = () => {
               warehouse_id: wp.warehouse_id
             };
           } catch (error) {
-            console.error(`Error fetching product ${wp.product_id}:`, error);
+            console.error(`❌ Error fetching product ${wp.product_id}:`, error);
             return null;
           }
         })
@@ -165,9 +175,11 @@ const InvoiceFormPage = () => {
 
       // Filter out null values and set products
       const validProducts = productsWithStock.filter(p => p !== null);
+      console.log('✅ Productos válidos:', validProducts);
+      console.log('✅ Total de productos a mostrar:', validProducts.length);
       setProducts(validProducts);
     } catch (error) {
-      console.error('Error fetching products for warehouse:', error);
+      console.error('❌ Error fetching products for warehouse:', error);
       setProducts([]);
     }
   };
@@ -187,7 +199,18 @@ const InvoiceFormPage = () => {
       setInitialLoading(true);
       const response = await invoicesAPI.getById(invoiceId);
       const invoice = response.data;
-      
+
+      // Mapear items desde el formato del backend al formato del frontend
+      // Backend: price_per_unit, tax_rate -> Frontend: unit_price, tax_percent
+      const mappedItems = (invoice.items || []).map((item: any) => ({
+        product_id: item.product_id,
+        product_name: item.product_name || `Producto ${item.product_id}`, // Backend puede no incluir nombre
+        quantity: item.quantity,
+        unit_price: item.price_per_unit || item.unit_price || 0, // Backend usa price_per_unit
+        tax_percent: item.tax_rate !== undefined ? item.tax_rate : (item.tax_percent || 16), // Backend usa tax_rate
+        is_exempt: item.is_exempt || false
+      }));
+
       setFormData({
         customer_id: invoice.customer_id,
         warehouse_id: invoice.warehouse_id || null,
@@ -195,11 +218,19 @@ const InvoiceFormPage = () => {
         discount: invoice.discount || 0,
         date: invoice.date || new Date().toISOString().split('T')[0],
         due_date: invoice.due_date || '',
-        items: invoice.items || [],
+        items: mappedItems,
         notes: invoice.notes || '',
-        payment_terms: invoice.payment_terms || '30'
+        payment_terms: invoice.payment_terms || '30',
+
+        // Venezuela SENIAT - cargar desde la factura
+        transaction_type: invoice.transaction_type || 'contado',
+        payment_method: invoice.payment_method || 'efectivo',
+        credit_days: invoice.credit_days || 0,
+        iva_percentage: invoice.iva_percentage || 16,
+        customer_phone: invoice.customer_phone || '',
+        customer_address: invoice.customer_address || ''
       });
-      
+
       const customer = customers.find(c => c.id === invoice.customer_id);
       if (customer) {
         setSelectedCustomerName(customer.name);
