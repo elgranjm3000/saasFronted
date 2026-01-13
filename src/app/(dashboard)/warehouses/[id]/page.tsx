@@ -31,15 +31,13 @@ interface Warehouse {
 }
 
 interface WarehouseProduct {
-  warehouse_id: number;
   product_id: number;
+  warehouse_id: number;
   stock: number;
-  product?: {
-    id: number;
-    name: string;
-    sku: string;
-    price: number;
-  };
+  product_name: string;
+  product_description: string;
+  product_sku: string;
+  product_price: number;
 }
 
 interface WarehouseDetailPageProps {
@@ -144,7 +142,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
     totalStock: products.reduce((sum, p) => sum + p.stock, 0),
     lowStockItems: products.filter(p => p.stock <= 10).length,
     outOfStockItems: products.filter(p => p.stock === 0).length,
-    totalValue: products.reduce((sum, p) => sum + (p.stock * (p.product?.price || 0)), 0)
+    totalValue: products.reduce((sum, p) => sum + (p.stock * p.product_price), 0)
   };
 
   if (loading) {
@@ -300,11 +298,11 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                             <Package className="w-6 h-6 text-gray-500" />
                           </div>
                           <div>
-                            <h4 className="font-medium text-gray-900">{item.product?.name}</h4>
-                            <p className="text-sm text-gray-500 font-mono">{item.product?.sku}</p>
+                            <h4 className="font-medium text-gray-900">{item.product_name}</h4>
+                            <p className="text-sm text-gray-500 font-mono">{item.product_sku}</p>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center space-x-6">
                           <div className="text-right">
                             <p className="text-sm text-gray-500">Stock</p>
@@ -313,7 +311,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                               <StockIcon className={`w-4 h-4 ${stockStatus.color}`} />
                             </div>
                           </div>
-                          
+
                           <div className="flex items-center space-x-2">
                             <Link
                               href={`/products/${item.product_id}`}
