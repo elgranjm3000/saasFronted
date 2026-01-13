@@ -419,16 +419,19 @@ export const customersAPI = {
 export const categoriesAPI = {
   getAll: () =>
     apiClient.get('/categories'),
-  
+
   getById: (id: number) =>
     apiClient.get(`/categories/${id}`),
-  
+
+  getProducts: (id: number) =>
+    apiClient.get(`/categories/${id}/products`),
+
   create: (data: any) =>
     apiClient.post('/categories', data),
-  
+
   update: (id: number, data: any) =>
     apiClient.put(`/categories/${id}`, data),
-  
+
   delete: (id: number) =>
     apiClient.delete(`/categories/${id}`),
 };

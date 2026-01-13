@@ -23,6 +23,7 @@ interface Category {
 
 const CategoriesPage = () => {
   const [categories, setCategories] = useState<Category[]>([]);
+  const [productCounts, setProductCounts] = useState<Record<number, number>>({});
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -34,7 +35,23 @@ const CategoriesPage = () => {
     try {
       setLoading(true);
       const response = await categoriesAPI.getAll();
-      setCategories(response.data || []);
+      const categoriesData = response.data || [];
+      setCategories(categoriesData);
+
+      // Fetch product count for each category
+      const counts: Record<number, number> = {};
+      await Promise.all(
+        categoriesData.map(async (category: Category) => {
+          try {
+            const productsResponse = await categoriesAPI.getProducts(category.id);
+            counts[category.id] = productsResponse.data?.length || 0;
+          } catch (error) {
+            console.error(`Error fetching products for category ${category.id}:`, error);
+            counts[category.id] = 0;
+          }
+        })
+      );
+      setProductCounts(counts);
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
@@ -60,7 +77,7 @@ const CategoriesPage = () => {
 
   const stats = {
     total: categories.length,
-    withProducts: categories.filter(c => c.product_count && c.product_count > 0).length
+    withProducts: categories.filter(c => productCounts[c.id] && productCounts[c.id] > 0).length
   };
 
   if (loading) {
@@ -170,7 +187,7 @@ const CategoriesPage = () => {
                   </td>
                   <td className="py-4 px-6">
                     <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                      {category.product_count || 0} productos
+                      {productCounts[category.id] || 0} productos
                     </span>
                   </td>
                   <td className="py-4 px-6">
