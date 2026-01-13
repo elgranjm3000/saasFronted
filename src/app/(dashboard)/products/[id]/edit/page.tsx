@@ -39,16 +39,20 @@ interface Product {
   sku: string;
   price: number;
   cost?: number;
+  quantity?: number;
   stock_quantity?: number;
   min_stock?: number;
+  category_id?: number;
   category?: {
-    id: number;
     name: string;
+    description: string;
   };
-  warehouse?: {
-    id: number;
-    name: string;
-  };
+  warehouses?: Array<{
+    warehouse_id: number;
+    warehouse_name: string;
+    warehouse_location: string;
+    stock: number;
+  }>;
 }
 
 const ProductFormPage = () => {
@@ -95,13 +99,17 @@ const ProductFormPage = () => {
     try {
       setInitialLoading(true);
       const response = await productsAPI.getById(productId);
-      const product: any = response.data;
+      const product: Product = response.data;
 
       console.log('Product data from API:', product);
 
-      // Handle both nested objects and direct IDs
-      const categoryId = product.category?.id || product.category_id || '';
-      const warehouseId = product.warehouse?.id || product.warehouse_id || '';
+      // Extract category ID
+      const categoryId = product.category_id || '';
+
+      // Extract warehouse ID from first warehouse if available
+      const warehouseId = product.warehouses && product.warehouses.length > 0
+        ? product.warehouses[0].warehouse_id
+        : '';
 
       console.log('Extracted IDs:', { categoryId, warehouseId });
 
@@ -111,7 +119,7 @@ const ProductFormPage = () => {
         sku: product.sku || '',
         price: product.price?.toString() || '',
         cost: product.cost?.toString() || '',
-        stock_quantity: product.stock_quantity?.toString() || '',
+        stock_quantity: (product.quantity || product.stock_quantity || 0).toString(),
         min_stock: product.min_stock?.toString() || '10',
         category_id: categoryId?.toString() || '',
         warehouse_id: warehouseId?.toString() || ''

@@ -27,16 +27,20 @@ interface Product {
   description: string;
   price: number;
   cost?: number;
-  stock_quantity: number;
+  quantity?: number;
+  stock_quantity?: number;
   min_stock?: number;
+  category_id?: number;
   category?: {
-    id: number;
     name: string;
+    description: string;
   };
-  warehouse?: {
-    id: number;
-    name: string;
-  };
+  warehouses?: Array<{
+    warehouse_id: number;
+    warehouse_name: string;
+    warehouse_location: string;
+    stock: number;
+  }>;
   company_id: number;
   created_at?: string;
   updated_at?: string;
@@ -49,9 +53,7 @@ interface ProductDetailPageProps {
 }
 
 const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
-  const [product, setProduct] = useState<any>(null);
-  const [categoryName, setCategoryName] = useState<string>('');
-  const [warehouseName, setWarehouseName] = useState<string>('');
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -66,27 +68,11 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
     try {
       setLoading(true);
       const response = await productsAPI.getById(Number(params.id));
-      const productData = response.data;
+      const productData: Product = response.data;
 
-      console.log('Product data:', productData);
+      console.log('Product data from API:', productData);
 
       setProduct(productData);
-
-      // Extract category and warehouse info from response
-      // Handle both nested objects and direct IDs
-      if (productData.category?.name) {
-        setCategoryName(productData.category.name);
-      } else if (productData.category_id) {
-        setCategoryName(`ID: ${productData.category_id}`);
-      }
-
-      if (productData.warehouse?.name) {
-        setWarehouseName(productData.warehouse.name);
-      } else if (productData.warehouse_id) {
-        setWarehouseName(`ID: ${productData.warehouse_id}`);
-      }
-
-      console.log('Category:', categoryName, 'Warehouse:', warehouseName);
     } catch (error: any) {
       console.error('Error fetching product:', error);
       setError('Error al cargar el producto');
@@ -164,7 +150,7 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
     );
   }
 
-  const stockStatus = getStockStatus(product.stock_quantity, product.min_stock);
+  const stockStatus = getStockStatus(product.quantity || product.stock_quantity || 0, product.min_stock);
   const StockIcon = stockStatus.icon;
 
   return (
@@ -223,9 +209,9 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                   <div className="mb-6">
                     <div className="flex items-center space-x-3 mb-4">
                       <h2 className="text-2xl font-light text-gray-900">{product.name}</h2>
-                      {categoryName && (
+                      {product.category && (
                         <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                          {categoryName}
+                          {product.category.name}
                         </span>
                       )}
                     </div>
@@ -257,11 +243,11 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                     <div>
                       <div className="flex items-center mb-2">
                         <Package className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-500">Stock</span>
+                        <span className="text-sm text-gray-500">Stock Total</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <p className="text-2xl font-light text-gray-900">
-                          {product.stock_quantity}
+                          {product.quantity || product.stock_quantity || 0}
                         </p>
                         <StockIcon className={`w-5 h-5 ${stockStatus.color}`} />
                       </div>
@@ -300,22 +286,12 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                   </div>
                 </div>
 
-                {categoryName && (
+                {product.category && (
                   <div className="flex items-center">
                     <Package className="w-5 h-5 text-gray-400 mr-3" />
                     <div>
                       <p className="text-sm text-gray-500">Categoría</p>
-                      <p className="font-medium text-gray-900">{categoryName}</p>
-                    </div>
-                  </div>
-                )}
-
-                {warehouseName && (
-                  <div className="flex items-center">
-                    <Package className="w-5 h-5 text-gray-400 mr-3" />
-                    <div>
-                      <p className="text-sm text-gray-500">Almacén</p>
-                      <p className="font-medium text-gray-900">{warehouseName}</p>
+                      <p className="font-medium text-gray-900">{product.category.name}</p>
                     </div>
                   </div>
                 )}
@@ -354,7 +330,7 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Cantidad actual</span>
-                  <span className="font-medium text-gray-900">{product.stock_quantity}</span>
+                  <span className="font-medium text-gray-900">{product.quantity || product.stock_quantity || 0}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Stock mínimo</span>
@@ -363,7 +339,7 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Valor del stock</span>
                   <span className="font-medium text-gray-900">
-                    {formatCurrency(product.price * product.stock_quantity)}
+                    {formatCurrency(product.price * (product.quantity || product.stock_quantity || 0))}
                   </span>
                 </div>
                 {product.cost && (
@@ -377,6 +353,36 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
               </div>
             </div>
           </div>
+
+          {/* Warehouses Card */}
+          {product.warehouses && product.warehouses.length > 0 && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-xl font-light text-gray-900">Almacenes</h3>
+              </div>
+              <div className="p-6">
+                <div className="space-y-4">
+                  {product.warehouses.map((warehouse) => (
+                    <div key={warehouse.warehouse_id} className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center">
+                          <Package className="w-6 h-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900">{warehouse.warehouse_name}</p>
+                          <p className="text-sm text-gray-500">{warehouse.warehouse_location}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-gray-500">Stock</p>
+                        <p className="text-xl font-bold text-gray-900">{warehouse.stock}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
