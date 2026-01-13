@@ -25,7 +25,6 @@ interface CustomerFormData {
   phone: string;
   address: string;
   tax_id: string;
-  is_active: boolean;
 }
 
 const CustomerFormPage = () => {
@@ -34,8 +33,7 @@ const CustomerFormPage = () => {
     email: '',
     phone: '',
     address: '',
-    tax_id: '',
-    is_active: true
+    tax_id: ''
   });
   
   const [loading, setLoading] = useState(false);
@@ -69,8 +67,7 @@ const CustomerFormPage = () => {
         email: customer.email || '',
         phone: customer.phone || '',
         address: customer.address || '',
-        tax_id: customer.tax_id || '',
-        is_active: customer.is_active
+        tax_id: customer.tax_id || ''
       });
     } catch (error) {
       console.error('Error fetching customer:', error);
@@ -130,8 +127,7 @@ const CustomerFormPage = () => {
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
-        tax_id: formData.tax_id.trim() || undefined,
-        is_active: formData.is_active
+        tax_id: formData.tax_id.trim() || undefined
       };
 
       if (isEdit && customerId) {
@@ -321,31 +317,6 @@ const CustomerFormPage = () => {
               </div>
             </div>
 
-            {/* Status */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Estado</h3>
-              </div>
-              <div className="p-6">
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="is_active"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleInputChange}
-                    className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                  />
-                  <label htmlFor="is_active" className="text-sm font-medium text-gray-700">
-                    Cliente activo
-                  </label>
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Los clientes inactivos no aparecerán en las listas principales
-                </p>
-              </div>
-            </div>
-
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
               <Link
@@ -409,12 +380,6 @@ const CustomerFormPage = () => {
                     </span>
                   </div>
                 )}
-                <div className="flex justify-between pt-3 border-t border-gray-100">
-                  <span className="text-sm text-gray-500">Estado</span>
-                  <span className={`font-medium ${formData.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                    {formData.is_active ? 'Activo' : 'Inactivo'}
-                  </span>
-                </div>
               </div>
             </div>
           </div>
