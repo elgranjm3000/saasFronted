@@ -678,140 +678,163 @@ const POSPage = () => {
           </div>
 
           {/* Cart Items */}
-          <div className="flex-1 overflow-y-auto p-4">
+          <div className="flex-1 overflow-y-auto">
             {cart.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center">
-                <ShoppingCart className="w-16 h-16 text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Carrito vacío</h3>
-                <p className="text-gray-500 text-sm">Agrega productos para comenzar</p>
+              <div className="h-full flex flex-col items-center justify-center text-center p-6">
+                <ShoppingCart className="w-20 h-20 text-gray-200 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Carrito vacío</h3>
+                <p className="text-gray-500 text-sm">Selecciona productos para comenzar</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="p-4 space-y-4">
                 {cart.map(item => (
                   <div
                     key={item.product.id}
-                    className={`bg-white rounded-xl shadow-sm border-2 transition-all ${
+                    className={`relative overflow-hidden rounded-2xl shadow-md border-2 transition-all hover:shadow-lg ${
                       item.is_exempt
-                        ? 'border-green-200 bg-green-50/30'
-                        : 'border-blue-200 hover:border-blue-300'
+                        ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white'
+                        : 'border-indigo-200 bg-gradient-to-br from-indigo-50 to-white hover:border-indigo-300'
                     }`}
                   >
-                    {/* Header - Nombre y SKU */}
-                    <div className="flex items-start justify-between p-3 pb-2">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900 text-sm leading-tight">
-                            {item.product.name}
-                          </h4>
-                          {item.is_exempt && (
-                            <span className="flex-shrink-0 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-                              Exento
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 font-mono">{item.product.sku}</p>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(item.product.id)}
-                        className="flex-shrink-0 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Eliminar del carrito"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    {/* Colored top bar */}
+                    <div className={`h-1.5 w-full ${
+                      item.is_exempt ? 'bg-emerald-400' : 'bg-indigo-400'
+                    }`}></div>
 
-                    {/* Cantidad y Precio */}
-                    <div className="flex items-center justify-between px-3 py-2 bg-gray-50/50 mx-2 rounded-lg mb-2">
-                      {/* Controles de cantidad */}
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                          className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all shadow-sm"
-                          title="Reducir cantidad"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <div className="w-12 h-8 bg-white border border-gray-300 rounded-lg flex items-center justify-center shadow-sm">
-                          <span className="font-bold text-gray-900">{item.quantity}</span>
+                    {/* Main Content */}
+                    <div className="p-4">
+                      {/* Header - Product Info */}
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1 min-w-0 pr-3">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <div className={`p-1.5 rounded-lg ${
+                              item.is_exempt
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-indigo-100 text-indigo-700'
+                            }`}>
+                              <Package className="w-3.5 h-3.5" />
+                            </div>
+                            <h4 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
+                              {item.product.name}
+                            </h4>
+                            {item.is_exempt && (
+                              <span className="flex-shrink-0 px-2.5 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-sm">
+                                EXENTO
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 font-mono mt-1">{item.product.sku}</p>
                         </div>
                         <button
-                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                          className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center hover:bg-green-50 hover:border-green-300 hover:text-green-600 transition-all shadow-sm"
-                          title="Aumentar cantidad"
+                          onClick={() => removeFromCart(item.product.id)}
+                          className="flex-shrink-0 p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-xl transition-all shadow-sm hover:shadow-md"
+                          title="Eliminar producto"
                         >
-                          <Plus className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
 
-                      {/* Precios */}
-                      <div className="text-right">
-                        <p className={`text-lg font-bold ${
-                          item.is_exempt ? 'text-green-700' : 'text-blue-600'
-                        }`}>
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {formatCurrency(item.product.price)} c/u
-                        </p>
-                      </div>
-                    </div>
+                      {/* Quantity & Price Section */}
+                      <div className="flex items-center justify-between mb-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+                        {/* Quantity Controls */}
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 flex items-center justify-center hover:from-red-50 hover:to-red-100 hover:border-red-300 hover:text-red-600 transition-all shadow-sm active:scale-95"
+                            title="Reducir cantidad"
+                          >
+                            <Minus className="w-4 h-4" />
+                          </button>
+                          <div className="w-14 h-9 bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-md">
+                            <span className="text-lg font-bold text-white">{item.quantity}</span>
+                          </div>
+                          <button
+                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 flex items-center justify-center hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm active:scale-95"
+                            title="Aumentar cantidad"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
 
-                    {/* Configuración de IVA */}
-                    <div className="flex items-center justify-between px-3 pb-3 pt-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-600 font-medium">IVA:</span>
-                        <select
-                          value={item.tax_percent}
-                          onChange={(e) => {
-                            const newTaxPercent = Number(e.target.value);
-                            setCart(cart.map(i =>
-                              i.product.id === item.product.id
-                                ? { ...i, tax_percent: newTaxPercent }
-                                : i
-                            ));
-                          }}
-                          disabled={item.is_exempt}
-                          className={`px-2 py-1 rounded-lg text-sm font-medium border ${
-                            item.is_exempt
-                              ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                              : 'bg-white border-blue-300 text-blue-700 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:outline-none'
-                          }`}
-                        >
-                          <option value={16}>16%</option>
-                          <option value={8}>8%</option>
-                          <option value={0}>0%</option>
-                        </select>
-                        <label className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border cursor-pointer transition-all ${
-                          item.is_exempt
-                            ? 'bg-green-100 border-green-300 hover:bg-green-200'
-                            : 'bg-gray-100 border-gray-200 hover:bg-gray-200'
-                        }`}>
-                          <input
-                            type="checkbox"
-                            checked={item.is_exempt}
-                            onChange={(e) => {
-                              setCart(cart.map(i =>
-                                i.product.id === item.product.id
-                                  ? { ...i, is_exempt: e.target.checked }
-                                  : i
-                              ));
-                            }}
-                            className="w-3.5 h-3.5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          <span className={`text-xs font-medium ${
-                            item.is_exempt ? 'text-green-700' : 'text-gray-600'
+                        {/* Prices */}
+                        <div className="text-right">
+                          <div className={`text-2xl font-black ${
+                            item.is_exempt ? 'text-emerald-600' : 'text-indigo-600'
                           }`}>
-                            Exento
-                          </span>
-                        </label>
+                            {formatCurrency(item.product.price * item.quantity)}
+                          </div>
+                          <p className="text-xs text-gray-500 font-medium">
+                            {formatCurrency(item.product.price)} c/u
+                          </p>
+                        </div>
                       </div>
 
-                      {/* Subtotal del item con IVA */}
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">Subtotal</p>
-                        <p className="text-sm font-semibold text-gray-900">
-                          {formatCurrency(item.product.price * item.quantity)}
-                        </p>
+                      {/* Tax Configuration */}
+                      <div className="bg-white rounded-xl p-3 border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          {/* Tax Rate Selector */}
+                          <div className="flex items-center gap-2 flex-1">
+                            <div className={`px-3 py-1.5 rounded-lg border-2 text-sm font-bold transition-all ${
+                              item.is_exempt
+                                ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                : 'bg-indigo-50 border-indigo-300 text-indigo-700'
+                            }`}>
+                              IVA
+                            </div>
+                            <select
+                              value={item.tax_percent}
+                              onChange={(e) => {
+                                const newTaxPercent = Number(e.target.value);
+                                setCart(cart.map(i =>
+                                  i.product.id === item.product.id
+                                    ? { ...i, tax_percent: newTaxPercent }
+                                    : i
+                                ));
+                              }}
+                              disabled={item.is_exempt}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-bold border-2 transition-all ${
+                                item.is_exempt
+                                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                  : 'bg-white border-indigo-300 text-indigo-700 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer shadow-sm'
+                              }`}
+                            >
+                              <option value={16}>16%</option>
+                              <option value={8}>8%</option>
+                              <option value={0}>0%</option>
+                            </select>
+                          </div>
+
+                          {/* Exempt Toggle */}
+                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 cursor-pointer transition-all font-medium text-sm ${
+                            item.is_exempt
+                              ? 'bg-emerald-500 border-emerald-600 text-white shadow-md'
+                              : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200 hover:border-gray-400'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={item.is_exempt}
+                              onChange={(e) => {
+                                setCart(cart.map(i =>
+                                  i.product.id === item.product.id
+                                    ? { ...i, is_exempt: e.target.checked }
+                                    : i
+                                ));
+                              }}
+                              className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                            />
+                            <span>Exento</span>
+                          </label>
+
+                          {/* Subtotal Badge */}
+                          <div className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
+                            item.is_exempt
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {formatCurrency(item.product.price * item.quantity)}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
