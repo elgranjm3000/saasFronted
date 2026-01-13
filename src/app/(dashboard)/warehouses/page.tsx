@@ -34,6 +34,7 @@ const WarehousesPage = () => {
   const [selectedWarehouses, setSelectedWarehouses] = useState<number[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'address'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [lowStockData, setLowStockData] = useState<Record<number, number>>({});
 
   useEffect(() => {
     fetchWarehouses();
@@ -44,6 +45,20 @@ const WarehousesPage = () => {
       setLoading(true);
       const response = await warehousesAPI.getAll();
       setWarehouses(response.data);
+
+      // Fetch low stock data for each warehouse
+      const lowStockCounts: Record<number, number> = {};
+      await Promise.all(
+        response.data.map(async (warehouse: Warehouse) => {
+          try {
+            const lowStockResponse = await warehousesAPI.getLowStock(warehouse.id, 10);
+            lowStockCounts[warehouse.id] = lowStockResponse.data?.length || 0;
+          } catch (error) {
+            lowStockCounts[warehouse.id] = 0;
+          }
+        })
+      );
+      setLowStockData(lowStockCounts);
     } catch (error) {
       console.error('Error fetching warehouses:', error);
     } finally {
@@ -77,10 +92,7 @@ const WarehousesPage = () => {
 
   const stats = {
     total: warehouses.length,
-    // Estos valores se pueden obtener de endpoints adicionales si están disponibles
-    totalProducts: 0,
-    totalStock: 0,
-    totalLowStock: 0
+    totalLowStock: Object.values(lowStockData).reduce((sum, count) => sum + count, 0)
   };
 
   const WarehouseCard = ({ warehouse }: { warehouse: Warehouse }) => {
@@ -131,22 +143,15 @@ const WarehousesPage = () => {
               #{warehouse.id}
             </p>
           </div>
-          {warehouse.manager && (
-            <div>
-              <p className="text-sm text-gray-500">Responsable</p>
-              <p className="text-xl font-light text-gray-900">
-                {warehouse.manager}
-              </p>
-            </div>
-          )}
+          <div>
+            <p className="text-sm text-gray-500">Stock Bajo</p>
+            <p className="text-xl font-light text-orange-600">
+              {lowStockData[warehouse.id] || 0}
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
-          <span className={`px-3 py-1 text-sm rounded-full ${
-            warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-          }`}>
-            {warehouse.is_active ? 'Activo' : 'Inactivo'}
-          </span>
           <Link
             href={`/warehouses/${warehouse.id}/products`}
             className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -189,7 +194,7 @@ const WarehousesPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -200,34 +205,6 @@ const WarehousesPage = () => {
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <Building2 className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Productos Totales
-                </p>
-                <p className="text-2xl font-light text-gray-900">{stats.totalProducts}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <Package className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Stock Total
-                </p>
-                <p className="text-2xl font-light text-gray-900">{stats.totalStock}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <TrendingUp className="w-7 h-7 text-white" />
               </div>
             </div>
           </div>
@@ -335,9 +312,8 @@ const WarehousesPage = () => {
                   </th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Almacén</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Dirección</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Responsable</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">ID</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Stock Bajo</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
                 </tr>
               </thead>
@@ -370,17 +346,12 @@ const WarehousesPage = () => {
                         <span className="text-gray-400">-</span>
                       )}
                     </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      {warehouse.manager || '-'}
-                    </td>
                     <td className="py-4 px-6 text-gray-900 font-mono text-sm">
                       #{warehouse.id}
                     </td>
                     <td className="py-4 px-6">
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        warehouse.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {warehouse.is_active ? 'Activo' : 'Inactivo'}
+                      <span className="px-3 py-1 bg-orange-100 text-orange-800 text-sm rounded-full">
+                        {lowStockData[warehouse.id] || 0} productos
                       </span>
                     </td>
                     <td className="py-4 px-6">

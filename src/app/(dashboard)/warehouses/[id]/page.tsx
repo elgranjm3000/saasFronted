@@ -51,6 +51,7 @@ interface WarehouseDetailPageProps {
 const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
   const [products, setProducts] = useState<WarehouseProduct[]>([]);
+  const [lowStockCount, setLowStockCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [productsLoading, setProductsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +80,14 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
   const fetchWarehouseProducts = async () => {
     try {
       setProductsLoading(true);
+      // Fetch low stock count
+      try {
+        const lowStockResponse = await warehousesAPI.getLowStock(Number(params.id), 10);
+        setLowStockCount(lowStockResponse.data?.length || 0);
+      } catch (error) {
+        setLowStockCount(0);
+      }
+
       // Simulamos datos de productos ya que el endpoint puede no estar completamente implementado
       const mockProducts: WarehouseProduct[] = [
         {
@@ -245,13 +254,8 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                 {/* Warehouse Info */}
                 <div className="flex-1">
                   <div className="mb-6">
-                    <div className="flex items-center space-x-3 mb-4">
-                      <h2 className="text-2xl font-light text-gray-900">{warehouse.name}</h2>
-                      <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">
-                        Activo
-                      </span>
-                    </div>
-                    
+                    <h2 className="text-2xl font-light text-gray-900 mb-4">{warehouse.name}</h2>
+
                     <div className="flex items-center text-gray-600 mb-4">
                       <MapPin className="w-5 h-5 mr-2" />
                       <span>{warehouse.location}</span>
@@ -269,14 +273,14 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                         {warehouseStats.totalProducts}
                       </p>
                     </div>
-                    
+
                     <div>
                       <div className="flex items-center mb-2">
-                        <BarChart3 className="w-4 h-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-500">Stock Total</span>
+                        <AlertTriangle className="w-4 h-4 text-gray-400 mr-2" />
+                        <span className="text-sm text-gray-500">Stock Bajo</span>
                       </div>
-                      <p className="text-2xl font-light text-gray-900">
-                        {warehouseStats.totalStock}
+                      <p className="text-2xl font-light text-orange-600">
+                        {lowStockCount}
                       </p>
                     </div>
                   </div>
@@ -377,7 +381,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                     <p className="font-medium text-gray-900">{warehouse.id}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center">
                   <Building2 className="w-5 h-5 text-gray-400 mr-3" />
                   <div>
@@ -385,20 +389,12 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                     <p className="font-medium text-gray-900">#{warehouse.company_id}</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center">
                   <MapPin className="w-5 h-5 text-gray-400 mr-3" />
                   <div>
                     <p className="text-sm text-gray-500">Ubicación</p>
                     <p className="font-medium text-gray-900">{warehouse.location}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  <Calendar className="w-5 h-5 text-gray-400 mr-3" />
-                  <div>
-                    <p className="text-sm text-gray-500">Estado</p>
-                    <p className="font-medium text-green-600">Activo</p>
                   </div>
                 </div>
               </div>
@@ -420,16 +416,8 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                   <span className="font-medium text-gray-900">{warehouseStats.totalProducts}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Stock total</span>
-                  <span className="font-medium text-gray-900">{warehouseStats.totalStock}</span>
-                </div>
-                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Stock bajo</span>
-                  <span className="font-medium text-orange-600">{warehouseStats.lowStockItems}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">Sin stock</span>
-                  <span className="font-medium text-red-600">{warehouseStats.outOfStockItems}</span>
+                  <span className="font-medium text-orange-600">{lowStockCount}</span>
                 </div>
                 <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                   <span className="text-sm text-gray-500">Valor total</span>

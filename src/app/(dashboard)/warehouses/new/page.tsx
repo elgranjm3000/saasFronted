@@ -196,40 +196,6 @@ const NewWarehousePage = () => {
               </div>
             </div>
 
-            {/* Additional Information */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Información Adicional</h3>
-              </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Tipo de Almacén
-                    </label>
-                    <select className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none">
-                      <option value="">Seleccionar tipo</option>
-                      <option value="principal">Principal</option>
-                      <option value="sucursal">Sucursal</option>
-                      <option value="deposito">Depósito</option>
-                      <option value="temporal">Temporal</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-3">
-                      Capacidad (m²)
-                    </label>
-                    <input
-                      type="number"
-                      className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="0"
-                      min="0"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
 
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
@@ -280,15 +246,7 @@ const NewWarehousePage = () => {
               
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Estado</span>
-                  <span className="font-medium text-green-600">Activo</span>
-                </div>
-                <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Productos</span>
-                  <span className="font-medium text-gray-900">0</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Stock Total</span>
                   <span className="font-medium text-gray-900">0</span>
                 </div>
               </div>
