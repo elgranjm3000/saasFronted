@@ -1,10 +1,10 @@
 'use client'
 import React from 'react';
 import Link from 'next/link';
-import { 
-  Package, 
-  FileText, 
-  Users, 
+import {
+  Package,
+  FileText,
+  Users,
   TrendingUp,
   DollarSign,
   AlertTriangle,
@@ -16,10 +16,28 @@ import {
 import { useAuthStore } from '@/store/auth-store';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import DashboardLayout from '@/components/DashboardLayout';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 const DashboardPage = () => {
   const { user } = useAuthStore();
-  const { statsCards, recentActivity, refreshData, isLoading, error } = useDashboardStats();
+  const { statsCards, recentActivity, categoryProductData, monthlySalesData, refreshData, isLoading, error } = useDashboardStats();
+
+  // Colors for charts
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
 
   const getIconForCard = (title: string) => {
     switch (title) {
@@ -114,6 +132,59 @@ const DashboardPage = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 mb-8">
+          {/* Products by Category Chart */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-light text-gray-900">Productos por Categoría</h3>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={categoryProductData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ category, count }) => `${category}: ${count}`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="count"
+                  >
+                    {categoryProductData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Sales vs Purchases Chart */}
+          <div className="xl:col-span-2 bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-light text-gray-900">Ventas vs Compras (Mensual)</h3>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlySalesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" />
+                  <YAxis />
+                  <Tooltip
+                    formatter={(value: number) => `$${value.toLocaleString()}`}
+                  />
+                  <Legend />
+                  <Bar dataKey="ventas" fill="#3b82f6" name="Ventas" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="compras" fill="#10b981" name="Compras" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         {/* Content Grid */}
