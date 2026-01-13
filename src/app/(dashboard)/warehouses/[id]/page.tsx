@@ -80,6 +80,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
   const fetchWarehouseProducts = async () => {
     try {
       setProductsLoading(true);
+
       // Fetch low stock count
       try {
         const lowStockResponse = await warehousesAPI.getLowStock(Number(params.id), 10);
@@ -88,34 +89,12 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
         setLowStockCount(0);
       }
 
-      // Simulamos datos de productos ya que el endpoint puede no estar completamente implementado
-      const mockProducts: WarehouseProduct[] = [
-        {
-          warehouse_id: Number(params.id),
-          product_id: 1,
-          stock: 150,
-          product: {
-            id: 1,
-            name: 'Laptop Dell Inspiron 15',
-            sku: 'PROD-001',
-            price: 899.99
-          }
-        },
-        {
-          warehouse_id: Number(params.id),
-          product_id: 2,
-          stock: 5,
-          product: {
-            id: 2,
-            name: 'Mouse Logitech MX Master',
-            sku: 'PROD-002',
-            price: 99.99
-          }
-        }
-      ];
-      setProducts(mockProducts);
+      // Fetch real products using /warehouses/{warehouse_id}/products endpoint
+      const productsResponse = await warehousesAPI.getProducts(Number(params.id));
+      setProducts(productsResponse.data || []);
     } catch (error: any) {
       console.error('Error fetching warehouse products:', error);
+      setProducts([]);
     } finally {
       setProductsLoading(false);
     }
