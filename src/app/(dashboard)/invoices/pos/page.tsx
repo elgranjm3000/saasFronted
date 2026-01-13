@@ -550,291 +550,228 @@ const POSPage = () => {
           ${showCart ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         `}>
           {/* Mobile close button */}
-          <div className="lg:hidden flex items-center justify-between p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Carrito</h2>
+          <div className="lg:hidden flex items-center justify-between p-3 border-b border-gray-200">
+            <h2 className="text-base font-semibold text-gray-900">Carrito</h2>
             <button
               onClick={() => setShowCart(false)}
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
-          {/* Customer Selection */}
-          <div className="p-4 border-b border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cliente
-            </label>
-            <button
-              onClick={() => setShowCustomerSelector(!showCustomerSelector)}
-              className={`w-full px-4 py-3 text-left rounded-xl border transition-colors flex items-center justify-between ${
-                errors.customer
-                  ? 'border-red-300 bg-red-50'
-                  : selectedCustomer
-                  ? 'border-blue-300 bg-blue-50'
-                  : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-              }`}
-            >
-              <span className={selectedCustomer ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-                {selectedCustomer ? selectedCustomer.name : 'Seleccionar cliente...'}
-              </span>
-              <User className="w-4 h-4 text-gray-400" />
-            </button>
 
-            {errors.customer && (
-              <p className="mt-2 text-sm text-red-600">{errors.customer}</p>
-            )}
+          {/* Customer & Warehouse - Compact */}
+          <div className="flex-shrink-0 border-b border-gray-200 p-3 space-y-2">
+            {/* Customer Selection */}
+            <div>
+              <button
+                onClick={() => setShowCustomerSelector(!showCustomerSelector)}
+                className={`w-full px-3 py-2 text-left rounded-lg border transition-colors flex items-center justify-between text-sm ${
+                  errors.customer
+                    ? 'border-red-300 bg-red-50'
+                    : selectedCustomer
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                }`}
+              >
+                <span className={selectedCustomer ? 'text-gray-900 font-medium text-xs' : 'text-gray-400 text-xs'}>
+                  {selectedCustomer ? selectedCustomer.name : 'Cliente...'}
+                </span>
+                <User className="w-3.5 h-3.5 text-gray-400" />
+              </button>
 
-            {showCustomerSelector && (
-              <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
-                <div className="p-3 border-b border-gray-200">
-                  <input
-                    type="text"
-                    placeholder="Buscar cliente..."
-                    value={customerSearch}
-                    onChange={(e) => setCustomerSearch(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+              {showCustomerSelector && (
+                <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-lg">
+                  <div className="p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      placeholder="Buscar..."
+                      value={customerSearch}
+                      onChange={(e) => setCustomerSearch(e.target.value)}
+                      className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="max-h-32 overflow-y-auto">
+                    {filteredCustomers.map(customer => (
+                      <button
+                        key={customer.id}
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setShowCustomerSelector(false);
+                          setCustomerSearch('');
+                          setErrors(prev => ({ ...prev, customer: '' }));
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors text-sm"
+                      >
+                        <p className="font-medium text-gray-900 truncate">{customer.name}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="max-h-48 overflow-y-auto">
-                  {filteredCustomers.map(customer => (
-                    <button
-                      key={customer.id}
-                      onClick={() => {
-                        setSelectedCustomer(customer);
-                        setShowCustomerSelector(false);
-                        setCustomerSearch('');
-                        setErrors(prev => ({ ...prev, customer: '' }));
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-                    >
-                      <p className="font-medium text-gray-900">{customer.name}</p>
-                      <p className="text-sm text-gray-500">{customer.email}</p>
-                    </button>
-                  ))}
-                  {filteredCustomers.length === 0 && (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      No se encontraron clientes
-                    </div>
-                  )}
+              )}
+            </div>
+
+            {/* Warehouse Selection */}
+            <div>
+              <button
+                onClick={() => setShowWarehouseSelector(!showWarehouseSelector)}
+                className={`w-full px-3 py-2 text-left rounded-lg border transition-colors flex items-center justify-between text-sm ${
+                  errors.warehouse
+                    ? 'border-red-300 bg-red-50'
+                    : selectedWarehouse
+                    ? 'border-blue-300 bg-blue-50'
+                    : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
+                }`}
+              >
+                <span className={selectedWarehouse ? 'text-gray-900 font-medium text-xs' : 'text-gray-400 text-xs'}>
+                  {selectedWarehouse ? selectedWarehouse.name : 'Almacén...'}
+                </span>
+                <Building2 className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+
+              {showWarehouseSelector && (
+                <div className="mt-2 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-lg">
+                  <div className="max-h-32 overflow-y-auto">
+                    {warehouses.map(warehouse => (
+                      <button
+                        key={warehouse.id}
+                        onClick={() => {
+                          setSelectedWarehouse(warehouse);
+                          setShowWarehouseSelector(false);
+                          setErrors(prev => ({ ...prev, warehouse: '' }));
+                          setCart([]);
+                        }}
+                        className="w-full text-left px-3 py-2 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors text-sm"
+                      >
+                        <p className="font-medium text-gray-900 truncate">{warehouse.name}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Warehouse Selection */}
-          <div className="p-4 border-b border-gray-200">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Almacén
-            </label>
-            <button
-              onClick={() => setShowWarehouseSelector(!showWarehouseSelector)}
-              className={`w-full px-4 py-3 text-left rounded-xl border transition-colors flex items-center justify-between ${
-                errors.warehouse
-                  ? 'border-red-300 bg-red-50'
-                  : selectedWarehouse
-                  ? 'border-blue-300 bg-blue-50'
-                  : 'border-gray-200 bg-gray-50 hover:bg-gray-100'
-              }`}
-            >
-              <span className={selectedWarehouse ? 'text-gray-900 font-medium' : 'text-gray-400'}>
-                {selectedWarehouse ? selectedWarehouse.name : 'Seleccionar almacén...'}
-              </span>
-              <Building2 className="w-4 h-4 text-gray-400" />
-            </button>
-
-            {errors.warehouse && (
-              <p className="mt-2 text-sm text-red-600">{errors.warehouse}</p>
-            )}
-
-            {showWarehouseSelector && (
-              <div className="mt-2 border border-gray-200 rounded-xl overflow-hidden">
-                <div className="max-h-48 overflow-y-auto">
-                  {warehouses.map(warehouse => (
-                    <button
-                      key={warehouse.id}
-                      onClick={() => {
-                        setSelectedWarehouse(warehouse);
-                        setShowWarehouseSelector(false);
-                        setErrors(prev => ({ ...prev, warehouse: '' }));
-                        // Clear entire cart when switching warehouses since products are warehouse-specific
-                        setCart([]);
-                      }}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-0 transition-colors"
-                    >
-                      <p className="font-medium text-gray-900">{warehouse.name}</p>
-                      {warehouse.address && (
-                        <p className="text-sm text-gray-500">{warehouse.address}</p>
-                      )}
-                    </button>
-                  ))}
-                  {warehouses.length === 0 && (
-                    <div className="p-4 text-center text-gray-500 text-sm">
-                      No hay almacenes disponibles
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Cart Items */}
           <div className="flex-1 overflow-y-auto">
             {cart.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                <ShoppingCart className="w-20 h-20 text-gray-200 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Carrito vacío</h3>
-                <p className="text-gray-500 text-sm">Selecciona productos para comenzar</p>
+                <ShoppingCart className="w-16 h-16 text-gray-200 mb-3" />
+                <h3 className="text-base font-semibold text-gray-800 mb-1">Carrito vacío</h3>
+                <p className="text-gray-500 text-xs">Selecciona productos para comenzar</p>
               </div>
             ) : (
-              <div className="p-4 space-y-4">
+              <div className="p-3 space-y-3">
                 {cart.map(item => (
                   <div
                     key={item.product.id}
-                    className={`relative overflow-hidden rounded-2xl shadow-md border-2 transition-all hover:shadow-lg ${
+                    className={`relative overflow-hidden rounded-xl shadow-sm border transition-all hover:shadow-md ${
                       item.is_exempt
                         ? 'border-emerald-300 bg-gradient-to-br from-emerald-50 to-white'
                         : 'border-indigo-200 bg-gradient-to-br from-indigo-50 to-white hover:border-indigo-300'
                     }`}
                   >
-                    {/* Colored top bar */}
-                    <div className={`h-1.5 w-full ${
-                      item.is_exempt ? 'bg-emerald-400' : 'bg-indigo-400'
-                    }`}></div>
-
-                    {/* Main Content */}
-                    <div className="p-4">
-                      {/* Header - Product Info */}
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1 min-w-0 pr-3">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <div className={`p-1.5 rounded-lg ${
-                              item.is_exempt
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-indigo-100 text-indigo-700'
-                            }`}>
-                              <Package className="w-3.5 h-3.5" />
-                            </div>
-                            <h4 className="font-bold text-gray-900 text-base leading-tight line-clamp-2">
-                              {item.product.name}
-                            </h4>
-                            {item.is_exempt && (
-                              <span className="flex-shrink-0 px-2.5 py-1 bg-emerald-500 text-white text-xs font-bold rounded-full shadow-sm">
-                                EXENTO
-                              </span>
-                            )}
+                    {/* Compact Header */}
+                    <div className="flex items-start justify-between p-2 pb-1.5">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className={`p-1 rounded ${
+                            item.is_exempt
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-indigo-100 text-indigo-700'
+                          }`}>
+                            <Package className="w-3 h-3" />
                           </div>
-                          <p className="text-xs text-gray-500 font-mono mt-1">{item.product.sku}</p>
+                          <h4 className="font-bold text-gray-900 text-sm leading-tight line-clamp-1">
+                            {item.product.name}
+                          </h4>
+                          {item.is_exempt && (
+                            <span className="flex-shrink-0 px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-bold rounded-full">
+                              EXENTO
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => removeFromCart(item.product.id)}
+                        className="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-lg transition-all"
+                        title="Eliminar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    {/* Compact Quantity & Price */}
+                    <div className="flex items-center justify-between px-2 py-1.5 mb-1.5">
+                      <div className="flex items-center space-x-1.5">
+                        <button
+                          onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                          className="w-7 h-7 rounded-lg bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-all"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <div className="w-10 h-7 bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 rounded-lg flex items-center justify-center">
+                          <span className="text-sm font-bold text-white">{item.quantity}</span>
                         </div>
                         <button
-                          onClick={() => removeFromCart(item.product.id)}
-                          className="flex-shrink-0 p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-100 rounded-xl transition-all shadow-sm hover:shadow-md"
-                          title="Eliminar producto"
+                          onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                          className="w-7 h-7 rounded-lg bg-white border-2 border-gray-200 flex items-center justify-center hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-600 transition-all"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Plus className="w-3 h-3" />
                         </button>
                       </div>
 
-                      {/* Quantity & Price Section */}
-                      <div className="flex items-center justify-between mb-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm">
-                        {/* Quantity Controls */}
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 flex items-center justify-center hover:from-red-50 hover:to-red-100 hover:border-red-300 hover:text-red-600 transition-all shadow-sm active:scale-95"
-                            title="Reducir cantidad"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </button>
-                          <div className="w-14 h-9 bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-gray-700 rounded-xl flex items-center justify-center shadow-md">
-                            <span className="text-lg font-bold text-white">{item.quantity}</span>
-                          </div>
-                          <button
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            className="w-9 h-9 rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-200 flex items-center justify-center hover:from-emerald-50 hover:to-emerald-100 hover:border-emerald-300 hover:text-emerald-600 transition-all shadow-sm active:scale-95"
-                            title="Aumentar cantidad"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Prices */}
-                        <div className="text-right">
-                          <div className={`text-2xl font-black ${
-                            item.is_exempt ? 'text-emerald-600' : 'text-indigo-600'
-                          }`}>
-                            {formatCurrency(item.product.price * item.quantity)}
-                          </div>
-                          <p className="text-xs text-gray-500 font-medium">
-                            {formatCurrency(item.product.price)} c/u
-                          </p>
-                        </div>
+                      <div className={`text-base font-black ${
+                        item.is_exempt ? 'text-emerald-600' : 'text-indigo-600'
+                      }`}>
+                        {formatCurrency(item.product.price * item.quantity)}
                       </div>
+                    </div>
 
-                      {/* Tax Configuration */}
-                      <div className="bg-white rounded-xl p-3 border border-gray-200">
-                        <div className="flex items-center justify-between">
-                          {/* Tax Rate Selector */}
-                          <div className="flex items-center gap-2 flex-1">
-                            <div className={`px-3 py-1.5 rounded-lg border-2 text-sm font-bold transition-all ${
-                              item.is_exempt
-                                ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-indigo-50 border-indigo-300 text-indigo-700'
-                            }`}>
-                              IVA
-                            </div>
-                            <select
-                              value={item.tax_percent}
-                              onChange={(e) => {
-                                const newTaxPercent = Number(e.target.value);
-                                setCart(cart.map(i =>
-                                  i.product.id === item.product.id
-                                    ? { ...i, tax_percent: newTaxPercent }
-                                    : i
-                                ));
-                              }}
-                              disabled={item.is_exempt}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-bold border-2 transition-all ${
-                                item.is_exempt
-                                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                                  : 'bg-white border-indigo-300 text-indigo-700 hover:border-indigo-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer shadow-sm'
-                              }`}
-                            >
-                              <option value={16}>16%</option>
-                              <option value={8}>8%</option>
-                              <option value={0}>0%</option>
-                            </select>
-                          </div>
-
-                          {/* Exempt Toggle */}
-                          <label className={`flex items-center gap-2 px-4 py-2 rounded-xl border-2 cursor-pointer transition-all font-medium text-sm ${
+                    {/* Compact Tax Config */}
+                    <div className="flex items-center justify-between px-2 pb-2 gap-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-gray-500">IVA:</span>
+                        <select
+                          value={item.tax_percent}
+                          onChange={(e) => {
+                            const newTaxPercent = Number(e.target.value);
+                            setCart(cart.map(i =>
+                              i.product.id === item.product.id
+                                ? { ...i, tax_percent: newTaxPercent }
+                                : i
+                            ));
+                          }}
+                          disabled={item.is_exempt}
+                          className={`px-2 py-1 rounded-lg text-xs font-bold border ${
                             item.is_exempt
-                              ? 'bg-emerald-500 border-emerald-600 text-white shadow-md'
-                              : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200 hover:border-gray-400'
-                          }`}>
-                            <input
-                              type="checkbox"
-                              checked={item.is_exempt}
-                              onChange={(e) => {
-                                setCart(cart.map(i =>
-                                  i.product.id === item.product.id
-                                    ? { ...i, is_exempt: e.target.checked }
-                                    : i
-                                ));
-                              }}
-                              className="w-4 h-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <span>Exento</span>
-                          </label>
-
-                          {/* Subtotal Badge */}
-                          <div className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
-                            item.is_exempt
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-indigo-100 text-indigo-800'
-                          }`}>
-                            {formatCurrency(item.product.price * item.quantity)}
-                          </div>
-                        </div>
+                              ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-white border-indigo-300 text-indigo-700 hover:border-indigo-400'
+                          }`}
+                        >
+                          <option value={16}>16%</option>
+                          <option value={8}>8%</option>
+                          <option value={0}>0%</option>
+                        </select>
+                        <label className={`flex items-center gap-1 px-2 py-1 rounded-lg border cursor-pointer transition-all text-xs ${
+                          item.is_exempt
+                            ? 'bg-emerald-500 border-emerald-600 text-white'
+                            : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
+                        }`}>
+                          <input
+                            type="checkbox"
+                            checked={item.is_exempt}
+                            onChange={(e) => {
+                              setCart(cart.map(i =>
+                                i.product.id === item.product.id
+                                  ? { ...i, is_exempt: e.target.checked }
+                                  : i
+                              ));
+                            }}
+                            className="w-3 h-3 rounded border-gray-300 text-emerald-600"
+                          />
+                          <span className="font-medium">Exento</span>
+                        </label>
                       </div>
                     </div>
                   </div>
