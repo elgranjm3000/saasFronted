@@ -18,8 +18,6 @@ interface Category {
   id: number;
   name: string;
   description?: string;
-  product_count?: number;
-  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -32,6 +30,7 @@ interface CategoryDetailPageProps {
 
 const CategoryDetailPage = ({ params }: CategoryDetailPageProps) => {
   const [category, setCategory] = useState<Category | null>(null);
+  const [productCount, setProductCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -47,6 +46,15 @@ const CategoryDetailPage = ({ params }: CategoryDetailPageProps) => {
       setLoading(true);
       const response = await categoriesAPI.getById(Number(params.id));
       setCategory(response.data);
+
+      // Fetch product count using the correct endpoint
+      try {
+        const productsResponse = await categoriesAPI.getProducts(Number(params.id));
+        setProductCount(productsResponse.data?.length || 0);
+      } catch (error) {
+        console.error('Error fetching product count:', error);
+        setProductCount(0);
+      }
     } catch (error: any) {
       console.error('Error fetching category:', error);
       setError('Error al cargar la categoría');
@@ -153,15 +161,6 @@ const CategoryDetailPage = ({ params }: CategoryDetailPageProps) => {
                 <div className="flex-1">
                   <div className="mb-4">
                     <h2 className="text-2xl font-light text-gray-900 mb-2">{category.name}</h2>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        category.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {category.is_active ? 'Activa' : 'Inactiva'}
-                      </span>
-                    </div>
                   </div>
 
                   {category.description && (
@@ -181,7 +180,7 @@ const CategoryDetailPage = ({ params }: CategoryDetailPageProps) => {
                         <span className="text-sm text-gray-500">Productos</span>
                       </div>
                       <p className="text-2xl font-light text-gray-900">
-                        {category.product_count || 0}
+                        {productCount}
                       </p>
                     </div>
                   </div>
@@ -235,27 +234,17 @@ const CategoryDetailPage = ({ params }: CategoryDetailPageProps) => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Card */}
+          {/* Stats Card */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Estado</h3>
+              <h3 className="text-xl font-light text-gray-900">Estadísticas</h3>
             </div>
             <div className="p-6">
-              <div className={`flex items-center justify-center w-full py-4 px-6 rounded-2xl ${
-                category.is_active ? 'bg-green-100' : 'bg-red-100'
-              } mb-4`}>
-                <span className={`font-medium ${
-                  category.is_active ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {category.is_active ? 'Categoría Activa' : 'Categoría Inactiva'}
-                </span>
-              </div>
-
               <div className="space-y-3">
-                <div className="flex justify-between">
+                <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-500">Productos asociados</span>
                   <span className="font-medium text-gray-900">
-                    {category.product_count || 0}
+                    {productCount}
                   </span>
                 </div>
               </div>
