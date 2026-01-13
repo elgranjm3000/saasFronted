@@ -179,38 +179,53 @@ const ProductFormPage = () => {
         sku: formData.sku.trim(),
         price: Number(formData.price),
         cost: formData.cost ? Number(formData.cost) : undefined,
-        quantity: Number(formData.stock_quantity),
+        stock_quantity: Number(formData.stock_quantity),
         min_stock: Number(formData.min_stock),
-        category_id: formData.category_id ? Number(formData.category_id) : undefined,
-        warehouse_id: formData.warehouse_id ? Number(formData.warehouse_id) : undefined
+        category_id: formData.category_id ? Number(formData.category_id) : undefined
       };
 
+      console.log('Submitting product data:', submitData);
+
       if (isEdit && productId) {
-        await productsAPI.update(productId, submitData);
+        console.log('Updating product:', productId);
+        const response = await productsAPI.update(productId, submitData);
+        console.log('Update response:', response.data);
 
         // Update warehouse product entry if warehouse_id is specified
         if (formData.warehouse_id) {
           console.log('Updating warehouse product entry...');
-          await warehouseProductsAPI.createOrUpdate({
-            warehouse_id: Number(formData.warehouse_id),
-            product_id: productId,
-            stock: Number(formData.stock_quantity)
-          });
-          console.log('Warehouse product entry updated successfully');
+          try {
+            await warehouseProductsAPI.createOrUpdate({
+              warehouse_id: Number(formData.warehouse_id),
+              product_id: productId,
+              stock: Number(formData.stock_quantity)
+            });
+            console.log('Warehouse product entry updated successfully');
+          } catch (warehouseError) {
+            console.error('Error updating warehouse product:', warehouseError);
+            // Don't fail the entire operation if warehouse update fails
+          }
         }
       } else {
+        console.log('Creating new product...');
         const response = await productsAPI.create(submitData);
         const createdProduct = response.data;
+        console.log('Created product:', createdProduct);
 
         // Create warehouse product entry if warehouse_id is specified
-        if (formData.warehouse_id) {
+        if (formData.warehouse_id && createdProduct?.id) {
           console.log('Creating warehouse product entry...');
-          await warehouseProductsAPI.createOrUpdate({
-            warehouse_id: Number(formData.warehouse_id),
-            product_id: createdProduct.id,
-            stock: Number(formData.stock_quantity)
-          });
-          console.log('Warehouse product entry created successfully');
+          try {
+            await warehouseProductsAPI.createOrUpdate({
+              warehouse_id: Number(formData.warehouse_id),
+              product_id: createdProduct.id,
+              stock: Number(formData.stock_quantity)
+            });
+            console.log('Warehouse product entry created successfully');
+          } catch (warehouseError) {
+            console.error('Error creating warehouse product:', warehouseError);
+            // Don't fail the entire operation if warehouse update fails
+          }
         }
       }
 
@@ -226,6 +241,7 @@ const ProductFormPage = () => {
 
     } catch (error: any) {
       console.error('Error saving product:', error);
+      console.error('Error response:', error.response?.data);
       setErrors({ general: extractErrorMessage(error) });
     } finally {
       setLoading(false);
