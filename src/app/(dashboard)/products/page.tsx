@@ -17,7 +17,7 @@ import {
   Download,
   Upload
 } from 'lucide-react';
-import { productsAPI } from '@/lib/api';
+import { productsAPI, categoriesAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { ListItemSkeleton } from '@/components/Skeleton';
 
@@ -36,8 +36,10 @@ interface Product {
 
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedProducts, setSelectedProducts] = useState<number[]>([]);
@@ -46,7 +48,16 @@ const ProductsPage = () => {
 
   useEffect(() => {
     fetchProducts();
+    fetchCategories();
   }, []);
+
+  useEffect(() => {
+    if (selectedCategory !== null) {
+      fetchProductsByCategory(selectedCategory);
+    } else {
+      fetchProducts();
+    }
+  }, [selectedCategory]);
 
   const fetchProducts = async () => {
     try {
@@ -57,6 +68,27 @@ const ProductsPage = () => {
       console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchProductsByCategory = async (categoryId: number) => {
+    try {
+      setLoading(true);
+      const response = await productsAPI.getByCategory(categoryId);
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Error fetching products by category:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await categoriesAPI.getAll();
+      setCategories(response.data || []);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -275,7 +307,20 @@ const ProductsPage = () => {
           </div>
           
           <div className="flex items-center space-x-3">
-            <select 
+            <select
+              value={selectedCategory || ''}
+              onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
+              className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+            >
+              <option value="">Todas las Categorías</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'name' | 'price' | 'quantity')}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
@@ -284,7 +329,7 @@ const ProductsPage = () => {
               <option value="price">Ordenar por Precio</option>
               <option value="quantity">Ordenar por Stock</option>
             </select>
-            
+
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"

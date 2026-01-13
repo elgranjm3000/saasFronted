@@ -163,7 +163,7 @@ export const productsAPI = {
     apiClient.get(`/products/${productId}/inventory_movements`),
 
   getByCategory: (categoryId: number) =>
-    apiClient.get(`/products/category/${categoryId}`),
+    apiClient.get(`/categories/${categoryId}/products`),
 };
 
 // =============================================

@@ -18,7 +18,6 @@ interface Category {
   name: string;
   description?: string;
   product_count?: number;
-  is_active: boolean;
   created_at: string;
 }
 
@@ -61,7 +60,6 @@ const CategoriesPage = () => {
 
   const stats = {
     total: categories.length,
-    active: categories.filter(c => c.is_active).length,
     withProducts: categories.filter(c => c.product_count && c.product_count > 0).length
   };
 
@@ -96,7 +94,7 @@ const CategoriesPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -106,20 +104,6 @@ const CategoriesPage = () => {
                 <p className="text-2xl font-light text-gray-900">{stats.total}</p>
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <FolderKanban className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Activas
-                </p>
-                <p className="text-2xl font-light text-gray-900">{stats.active}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <FolderKanban className="w-7 h-7 text-white" />
               </div>
             </div>
@@ -164,7 +148,6 @@ const CategoriesPage = () => {
                 <th className="text-left py-4 px-6 font-medium text-gray-700">Categoría</th>
                 <th className="text-left py-4 px-6 font-medium text-gray-700">Descripción</th>
                 <th className="text-left py-4 px-6 font-medium text-gray-700">Productos</th>
-                <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                 <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
               </tr>
             </thead>
@@ -188,15 +171,6 @@ const CategoriesPage = () => {
                   <td className="py-4 px-6">
                     <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
                       {category.product_count || 0} productos
-                    </span>
-                  </td>
-                  <td className="py-4 px-6">
-                    <span className={`px-3 py-1 text-sm rounded-full ${
-                      category.is_active
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {category.is_active ? 'Activa' : 'Inactiva'}
                     </span>
                   </td>
                   <td className="py-4 px-6">
