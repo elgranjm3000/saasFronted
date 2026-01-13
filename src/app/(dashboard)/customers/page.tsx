@@ -35,7 +35,6 @@ const CustomersPage = () => {
   const [selectedCustomers, setSelectedCustomers] = useState<number[]>([]);
   const [sortBy, setSortBy] = useState<'name' | 'email' | 'created_at'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [statusFilter, setStatusFilter] = useState<string>('');
 
   useEffect(() => {
     fetchCustomers();
@@ -66,33 +65,25 @@ const CustomersPage = () => {
 
   const filteredCustomers = customers
     .filter(customer => {
-      const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (customer.tax_id && customer.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesStatus = statusFilter === '' || 
-                           (statusFilter === 'active' && customer.is_active) ||
-                           (statusFilter === 'inactive' && !customer.is_active);
-      
-      return matchesSearch && matchesStatus;
+      return customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             (customer.tax_id && customer.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
     })
     .sort((a, b) => {
       let aValue: any = a[sortBy];
       let bValue: any = b[sortBy];
-      
+
       if (sortBy === 'created_at') {
         aValue = new Date(a.created_at).getTime();
         bValue = new Date(b.created_at).getTime();
       }
-      
+
       const modifier = sortOrder === 'asc' ? 1 : -1;
       return aValue > bValue ? modifier : -modifier;
     });
 
   const stats = {
     total: customers.length,
-    active: customers.filter(c => c.is_active).length,
-    inactive: customers.filter(c => !c.is_active).length,
     thisMonth: customers.filter(c => {
       const customerDate = new Date(c.created_at);
       const now = new Date();
@@ -189,7 +180,7 @@ const CustomersPage = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
             <div className="flex items-center justify-between">
               <div>
@@ -200,34 +191,6 @@ const CustomersPage = () => {
               </div>
               <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
                 <Users className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Clientes Activos
-                </p>
-                <p className="text-2xl font-light text-green-600">{stats.active}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <UserCheck className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Clientes Inactivos
-                </p>
-                <p className="text-2xl font-light text-red-600">{stats.inactive}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <UserX className="w-7 h-7 text-white" />
               </div>
             </div>
           </div>
@@ -265,17 +228,7 @@ const CustomersPage = () => {
           </div>
           
           <div className="flex items-center space-x-3">
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-            >
-              <option value="">Todos los estados</option>
-              <option value="active">Activos</option>
-              <option value="inactive">Inactivos</option>
-            </select>
-
-            <select 
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as 'name' | 'email' | 'created_at')}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
@@ -284,7 +237,7 @@ const CustomersPage = () => {
               <option value="email">Ordenar por Email</option>
               <option value="created_at">Ordenar por Fecha</option>
             </select>
-            
+
             <button
               onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
               className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"

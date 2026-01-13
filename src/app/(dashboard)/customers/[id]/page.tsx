@@ -149,15 +149,6 @@ const CustomerDetailPage = ({ params }: CustomerDetailPageProps) => {
                 <div className="flex-1">
                   <div className="mb-4">
                     <h2 className="text-2xl font-light text-gray-900 mb-2">{customer.name}</h2>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        customer.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {customer.is_active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -215,24 +206,6 @@ const CustomerDetailPage = ({ params }: CustomerDetailPageProps) => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Estado</h3>
-            </div>
-            <div className="p-6">
-              <div className={`flex items-center justify-center w-full py-4 px-6 rounded-2xl ${
-                customer.is_active ? 'bg-green-100' : 'bg-red-100'
-              } mb-4`}>
-                <span className={`font-medium ${
-                  customer.is_active ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {customer.is_active ? 'Cliente Activo' : 'Cliente Inactivo'}
-                </span>
-              </div>
-            </div>
-          </div>
-
           {/* Quick Actions */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
