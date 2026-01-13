@@ -95,7 +95,15 @@ const ProductFormPage = () => {
     try {
       setInitialLoading(true);
       const response = await productsAPI.getById(productId);
-      const product: Product = response.data;
+      const product: any = response.data;
+
+      console.log('Product data from API:', product);
+
+      // Handle both nested objects and direct IDs
+      const categoryId = product.category?.id || product.category_id || '';
+      const warehouseId = product.warehouse?.id || product.warehouse_id || '';
+
+      console.log('Extracted IDs:', { categoryId, warehouseId });
 
       setFormData({
         name: product.name || '',
@@ -105,8 +113,8 @@ const ProductFormPage = () => {
         cost: product.cost?.toString() || '',
         stock_quantity: product.stock_quantity?.toString() || '',
         min_stock: product.min_stock?.toString() || '10',
-        category_id: product.category?.id?.toString() || '',
-        warehouse_id: product.warehouse?.id?.toString() || ''
+        category_id: categoryId?.toString() || '',
+        warehouse_id: warehouseId?.toString() || ''
       });
     } catch (error) {
       console.error('Error fetching product:', error);

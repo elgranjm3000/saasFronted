@@ -49,7 +49,9 @@ interface ProductDetailPageProps {
 }
 
 const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
-  const [product, setProduct] = useState<Product | null>(null);
+  const [product, setProduct] = useState<any>(null);
+  const [categoryName, setCategoryName] = useState<string>('');
+  const [warehouseName, setWarehouseName] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -64,7 +66,27 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
     try {
       setLoading(true);
       const response = await productsAPI.getById(Number(params.id));
-      setProduct(response.data);
+      const productData = response.data;
+
+      console.log('Product data:', productData);
+
+      setProduct(productData);
+
+      // Extract category and warehouse info from response
+      // Handle both nested objects and direct IDs
+      if (productData.category?.name) {
+        setCategoryName(productData.category.name);
+      } else if (productData.category_id) {
+        setCategoryName(`ID: ${productData.category_id}`);
+      }
+
+      if (productData.warehouse?.name) {
+        setWarehouseName(productData.warehouse.name);
+      } else if (productData.warehouse_id) {
+        setWarehouseName(`ID: ${productData.warehouse_id}`);
+      }
+
+      console.log('Category:', categoryName, 'Warehouse:', warehouseName);
     } catch (error: any) {
       console.error('Error fetching product:', error);
       setError('Error al cargar el producto');
@@ -201,13 +223,13 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                   <div className="mb-6">
                     <div className="flex items-center space-x-3 mb-4">
                       <h2 className="text-2xl font-light text-gray-900">{product.name}</h2>
-                      {product.category && (
+                      {categoryName && (
                         <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full">
-                          {product.category.name}
+                          {categoryName}
                         </span>
                       )}
                     </div>
-                    
+
                     {product.description && (
                       <p className="text-gray-600 leading-relaxed">
                         {product.description}
@@ -277,23 +299,23 @@ const ProductDetailPage = ({ params }: ProductDetailPageProps) => {
                     <p className="font-medium text-gray-900 font-mono">{product.sku}</p>
                   </div>
                 </div>
-                
-                {product.category && (
+
+                {categoryName && (
                   <div className="flex items-center">
                     <Package className="w-5 h-5 text-gray-400 mr-3" />
                     <div>
                       <p className="text-sm text-gray-500">Categoría</p>
-                      <p className="font-medium text-gray-900">{product.category.name}</p>
+                      <p className="font-medium text-gray-900">{categoryName}</p>
                     </div>
                   </div>
                 )}
 
-                {product.warehouse && (
+                {warehouseName && (
                   <div className="flex items-center">
                     <Package className="w-5 h-5 text-gray-400 mr-3" />
                     <div>
                       <p className="text-sm text-gray-500">Almacén</p>
-                      <p className="font-medium text-gray-900">{product.warehouse.name}</p>
+                      <p className="font-medium text-gray-900">{warehouseName}</p>
                     </div>
                   </div>
                 )}
