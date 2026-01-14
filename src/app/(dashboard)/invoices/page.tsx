@@ -23,28 +23,14 @@ import {
   Printer,
   Send
 } from 'lucide-react';
-import { invoicesAPI } from '@/lib/api';
+import { invoicesAPI, customersAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { ListItemSkeleton } from '@/components/Skeleton';
+import { Invoice as InvoiceType } from '@/types/invoice';
+import { Customer } from '@/types/customer';
 
-interface Invoice {
-  id: number;
-  invoice_number: string;
-  customer_id: number;
-  customer?: {
-    id: number;
-    name: string;
-    email: string;
-  };
-  issue_date: string;
-  due_date?: string;
-  subtotal: number;
-  tax_amount: number;
-  total_amount: number;
-  status: 'presupuesto' | 'pendiente' | 'pagada' | 'vencida' | 'cancelada';
-  company_id: number;
-  created_at: string;
-  updated_at: string;
+interface Invoice extends InvoiceType {
+  customer_name?: string;
 }
 
 const InvoicesPage = () => {
@@ -53,10 +39,8 @@ const InvoicesPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
-  const [sortBy, setSortBy] = useState<'invoice_number' | 'issue_date' | 'total_amount'>('issue_date');
+  const [sortBy, setSortBy] = useState<'invoice_number' | 'date' | 'total_amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [dateRange, setDateRange] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   useEffect(() => {
     fetchInvoices();
@@ -66,7 +50,35 @@ const InvoicesPage = () => {
     try {
       setLoading(true);
       const response = await invoicesAPI.getAll();
-      setInvoices(response.data);
+      const invoicesData = response.data;
+
+      // Obtener nombres de clientes únicos
+      const uniqueCustomerIds = Array.from(new Set(invoicesData.map((inv: Invoice) => inv.customer_id))) as number[];
+
+      // Crear un mapa de customer_id -> customer_name
+      const customerMap = new Map<number, string>();
+
+      // Obtener datos de cada cliente
+      await Promise.all(
+        uniqueCustomerIds.map(async (customerId: number) => {
+          try {
+            const customerResponse = await customersAPI.getById(customerId);
+            const customer: Customer = customerResponse.data;
+            customerMap.set(customerId, customer.name);
+          } catch (error) {
+            console.error(`Error fetching customer ${customerId}:`, error);
+            customerMap.set(customerId, `Cliente #${customerId}`);
+          }
+        })
+      );
+
+      // Agregar customer_name a cada factura
+      const invoicesWithNames = invoicesData.map((inv: Invoice) => ({
+        ...inv,
+        customer_name: customerMap.get(inv.customer_id) || `Cliente #${inv.customer_id}`
+      }));
+
+      setInvoices(invoicesWithNames);
     } catch (error) {
       console.error('Error fetching invoices:', error);
     } finally {
@@ -85,54 +97,69 @@ const InvoicesPage = () => {
     }
   };
 
-  const getStatusInfo = (status: string) => {
-    const statusMap: Record<string, { color: string; bg: string; icon: any; label: string }> = {
-      'presupuesto': { color: 'text-blue-600', bg: 'bg-blue-100', icon: FileText, label: 'Presupuesto' },
-      'pendiente': { color: 'text-orange-600', bg: 'bg-orange-100', icon: Clock, label: 'Pendiente' },
-      'pagada': { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle, label: 'Pagada' },
-      'vencida': { color: 'text-red-600', bg: 'bg-red-100', icon: AlertTriangle, label: 'Vencida' },
-      'cancelada': { color: 'text-gray-600', bg: 'bg-gray-100', icon: FileText, label: 'Cancelada' }
-    };
-    return statusMap[status] || statusMap['pendiente'];
+  // Calcular fecha de vencimiento basada en la fecha de la factura + días de crédito
+  const getDueDate = (invoice: Invoice): string | null => {
+    if (!invoice.date) return null;
+    if (invoice.transaction_type === 'contado') {
+      // Si es contado, vence el mismo día
+      return invoice.date;
+    }
+    if (invoice.credit_days && invoice.credit_days > 0) {
+      // Calcular fecha de vencimiento = fecha + días de crédito
+      const invoiceDate = new Date(invoice.date);
+      const dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + invoice.credit_days);
+      return dueDate.toISOString().split('T')[0];
+    }
+    return null;
+  };
+
+  // Verificar si una factura está vencida
+  const isOverdue = (invoice: Invoice): boolean => {
+    // Solo verificar vencimiento para facturas de crédito
+    if (invoice.transaction_type === 'contado') return false;
+
+    const dueDate = getDueDate(invoice);
+    if (!dueDate) return false;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return new Date(dueDate) < today;
   };
 
   const filteredInvoices = invoices
     .filter(invoice => {
-      const matchesSearch = 
+      const matchesSearch =
         invoice.invoice_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        invoice.customer?.email.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesStatus = statusFilter === '' || invoice.status === statusFilter;
-      
-      return matchesSearch && matchesStatus;
+        (invoice.customer_name && invoice.customer_name.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      return matchesSearch;
     })
     .sort((a, b) => {
       let aValue: any = a[sortBy];
       let bValue: any = b[sortBy];
-      
-      if (sortBy === 'issue_date') {
-        aValue = new Date(a.issue_date).getTime();
-        bValue = new Date(b.issue_date).getTime();
+
+      if (sortBy === 'date') {
+        aValue = new Date(a.date).getTime();
+        bValue = new Date(b.date).getTime();
       }
-      
+
       const modifier = sortOrder === 'asc' ? 1 : -1;
       return aValue > bValue ? modifier : -modifier;
     });
 
   const stats = {
     total: invoices.length,
-    totalAmount: invoices.reduce((sum, inv) => sum + inv.total_amount, 0),
-    pending: invoices.filter(inv => inv.status === 'pendiente').length,
-    overdue: invoices.filter(inv => inv.status === 'vencida').length,
-    paid: invoices.filter(inv => inv.status === 'pagada').length,
-    quotes: invoices.filter(inv => inv.status === 'presupuesto').length,
+    totalAmount: invoices.reduce((sum, inv) => sum + (inv.total_amount || 0), 0),
+    overdue: invoices.filter(inv => isOverdue(inv)).length,
+    credit: invoices.filter(inv => inv.transaction_type === 'credito').length,
+    cash: invoices.filter(inv => inv.transaction_type === 'contado').length,
   };
 
   const InvoiceCard = ({ invoice }: { invoice: Invoice }) => {
-    const statusInfo = getStatusInfo(invoice.status);
-    const StatusIcon = statusInfo.icon;
-    
+    const dueDate = getDueDate(invoice);
+    const overdue = isOverdue(invoice);
+
     return (
       <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100 hover:shadow-xl hover:shadow-gray-500/10 transition-all duration-300 hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
@@ -143,29 +170,27 @@ const InvoicesPage = () => {
             <MoreVertical className="w-4 h-4" />
           </button>
         </div>
-        
+
         <div className="mb-4">
-          <div className="flex items-start justify-between mb-2">
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">
-                {invoice.invoice_number}
-              </h3>
-              <p className="text-sm text-gray-500">
-                {invoice.customer?.name || 'Cliente'}
-              </p>
-            </div>
-            <span className={`px-3 py-1 text-sm rounded-full ${statusInfo.bg} ${statusInfo.color} flex items-center`}>
-              <StatusIcon className="w-3 h-3 mr-1" />
-              {statusInfo.label}
-            </span>
-          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-1">
+            {invoice.invoice_number}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {invoice.customer_name || `Cliente #${invoice.customer_id}`}
+          </p>
         </div>
-        
+
         <div className="space-y-3 mb-4">
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500 flex items-center">
               <Calendar className="w-4 h-4 mr-2" />
-              {formatDate(invoice.issue_date)}
+              {formatDate(invoice.date)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-500">Vencimiento</span>
+            <span className={`text-sm ${overdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+              {dueDate ? formatDate(dueDate) : '-'}
             </span>
           </div>
           <div className="flex items-center justify-between">
@@ -175,7 +200,7 @@ const InvoicesPage = () => {
             </span>
           </div>
         </div>
-        
+
         <div className="flex items-center space-x-2 pt-4 border-t border-gray-100">
           <Link
             href={`/invoices/${invoice.id}`}
@@ -193,7 +218,7 @@ const InvoicesPage = () => {
           >
             <Edit className="w-4 h-4" />
           </Link>
-          <button 
+          <button
             onClick={() => handleDelete(invoice.id)}
             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
           >
@@ -275,12 +300,26 @@ const InvoicesPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Pendientes
+                  Crédito
                 </p>
-                <p className="text-2xl font-light text-orange-600">{stats.pending}</p>
+                <p className="text-2xl font-light text-blue-600">{stats.credit}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-orange-600" />
+              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                <Clock className="w-6 h-6 text-blue-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
+                  Contado
+                </p>
+                <p className="text-2xl font-light text-green-600">{stats.cash}</p>
+              </div>
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                <CheckCircle className="w-6 h-6 text-green-600" />
               </div>
             </div>
           </div>
@@ -298,20 +337,6 @@ const InvoicesPage = () => {
               </div>
             </div>
           </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Pagadas
-                </p>
-                <p className="text-2xl font-light text-green-600">{stats.paid}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -323,34 +348,21 @@ const InvoicesPage = () => {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Buscar por número, cliente o email..."
+                placeholder="Buscar por número o cliente..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
               />
             </div>
           </div>
-          
-          <div className="flex items-center space-x-3">
-            <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-            >
-              <option value="">Todos los estados</option>
-              <option value="presupuesto">Presupuesto</option>
-              <option value="pendiente">Pendiente</option>
-              <option value="pagada">Pagada</option>
-              <option value="vencida">Vencida</option>
-              <option value="cancelada">Cancelada</option>
-            </select>
 
-            <select 
+          <div className="flex items-center space-x-3">
+            <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
             >
-              <option value="issue_date">Ordenar por Fecha</option>
+              <option value="date">Ordenar por Fecha</option>
               <option value="invoice_number">Ordenar por Número</option>
               <option value="total_amount">Ordenar por Monto</option>
             </select>
@@ -393,15 +405,14 @@ const InvoicesPage = () => {
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Fecha</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Vencimiento</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Monto</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredInvoices.map((invoice) => {
-                  const statusInfo = getStatusInfo(invoice.status);
-                  const StatusIcon = statusInfo.icon;
-                  
+                  const dueDate = getDueDate(invoice);
+                  const overdue = isOverdue(invoice);
+
                   return (
                     <tr key={invoice.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-4 px-6">
@@ -416,25 +427,26 @@ const InvoicesPage = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6">
-                        <div>
-                          <p className="font-medium text-gray-900">{invoice.customer?.name || '-'}</p>
-                          <p className="text-sm text-gray-500">{invoice.customer?.email || '-'}</p>
+                        <div className="flex items-center">
+                          <User className="w-4 h-4 text-gray-400 mr-2" />
+                          <p className="font-medium text-gray-900">{invoice.customer_name || `Cliente #${invoice.customer_id}`}</p>
                         </div>
                       </td>
                       <td className="py-4 px-6 text-gray-900">
-                        {formatDate(invoice.issue_date)}
-                      </td>
-                      <td className="py-4 px-6 text-gray-900">
-                        {invoice.due_date ? formatDate(invoice.due_date) : '-'}
-                      </td>
-                      <td className="py-4 px-6 font-medium text-gray-900">
-                        {formatCurrency(invoice.total_amount)}
+                        <div className="flex items-center">
+                          <Calendar className="w-4 h-4 text-gray-400 mr-2" />
+                          {formatDate(invoice.date)}
+                        </div>
                       </td>
                       <td className="py-4 px-6">
-                        <span className={`px-3 py-1 text-sm rounded-full ${statusInfo.bg} ${statusInfo.color} inline-flex items-center`}>
-                          <StatusIcon className="w-3 h-3 mr-1" />
-                          {statusInfo.label}
-                        </span>
+                        <div className={`flex items-center ${overdue ? 'text-red-600 font-medium' : 'text-gray-900'}`}>
+                          <Calendar className="w-4 h-4 mr-2" />
+                          {dueDate ? formatDate(dueDate) : '-'}
+                          {overdue && <AlertTriangle className="w-4 h-4 ml-2 text-red-600" />}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 font-medium text-gray-900">
+                        {formatCurrency(invoice.total_amount || 0)}
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
@@ -453,7 +465,7 @@ const InvoicesPage = () => {
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
-                          <button 
+                          <button
                             onClick={() => handleDelete(invoice.id)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                           >

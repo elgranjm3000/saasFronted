@@ -26,12 +26,12 @@ interface StatsCard {
   gradient: string;
 }
 
-interface CategoryProductCount {
+interface CategoryProductCount extends Record<string, any> {
   category: string;
   count: number;
 }
 
-interface MonthlyData {
+interface MonthlyData extends Record<string, any> {
   month: string;
   ventas: number;
   compras: number;

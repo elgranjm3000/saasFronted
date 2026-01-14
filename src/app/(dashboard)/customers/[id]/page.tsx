@@ -19,6 +19,8 @@ import {
 import { customersAPI } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Customer } from '@/types/customer';
+import { GoogleMapView } from '@/components/GoogleMapView';
+import { GoogleMapsWrapper } from '@/components/GoogleMapsWrapper';
 
 interface CustomerDetailPageProps {
   params: {
@@ -98,7 +100,7 @@ const CustomerDetailPage = ({ params }: CustomerDetailPageProps) => {
 
   return (
     <div className="p-6 lg:p-8">
-      {/* Header */}
+        {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
@@ -202,6 +204,24 @@ const CustomerDetailPage = ({ params }: CustomerDetailPageProps) => {
               </div>
             </div>
           </div>
+
+          {/* Map */}
+          {customer.latitude && customer.longitude && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <h3 className="text-xl font-light text-gray-900">Ubicación</h3>
+              </div>
+              <div className="p-6">
+                <GoogleMapsWrapper>
+                  <GoogleMapView
+                    lat={customer.latitude}
+                    lng={customer.longitude}
+                    address={customer.address || undefined}
+                  />
+                </GoogleMapsWrapper>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Sidebar */}

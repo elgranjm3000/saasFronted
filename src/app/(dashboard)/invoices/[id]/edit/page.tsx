@@ -16,6 +16,7 @@ import {
   DollarSign,
   Percent,
   Package,
+  X,
   Search,
   ChevronDown
 } from 'lucide-react';
@@ -27,15 +28,14 @@ interface InvoiceItem {
   product_id: number;
   product_name: string;
   quantity: number;
-  unit_price: number; // Frontend usa unit_price
-  tax_percent: number;
-  is_exempt: boolean;
+  unit_price: number;
+  tax_percent: number; // 16, 8, 0
+  is_exempt: boolean; // Productos exentos
 }
 
 interface InvoiceFormData {
   customer_id: number | null;
   warehouse_id: number | null;
-  status: string;
   discount: number;
   date: string;
   due_date: string;
@@ -47,7 +47,7 @@ interface InvoiceFormData {
   transaction_type: 'contado' | 'credito';
   payment_method: string;
   credit_days: number;
-  iva_percentage: number;
+  iva_percentage: number; // 16, 8, 0
   customer_phone?: string;
   customer_address?: string;
 }
@@ -72,11 +72,10 @@ interface Warehouse {
   location: string;
 }
 
-const InvoiceEditPage = () => {
+const InvoiceFormPage = () => {
   const [formData, setFormData] = useState<InvoiceFormData>({
     customer_id: null,
     warehouse_id: null,
-    status: 'factura',
     discount: 0,
     date: new Date().toISOString().split('T')[0],
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -84,13 +83,11 @@ const InvoiceEditPage = () => {
     notes: '',
     payment_terms: '30',
 
-    // Venezuela SENIAT
+    // Venezuela - valores por defecto
     transaction_type: 'contado',
     payment_method: 'efectivo',
     credit_days: 0,
-    iva_percentage: 16,
-    customer_phone: '',
-    customer_address: ''
+    iva_percentage: 16
   });
 
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -109,21 +106,31 @@ const InvoiceEditPage = () => {
 
   const router = useRouter();
   const params = useParams();
-  const invoiceId = Number(params.id);
+
+  const isEdit = params?.id && params.id !== 'new';
+  const invoiceId = isEdit ? Number(params.id) : null;
 
   useEffect(() => {
-    fetchCustomers();
-    fetchWarehouses();
+    const loadData = async () => {
+      await fetchCustomers();
+      await fetchWarehouses();
 
-    if (invoiceId) {
-      fetchInvoice();
-    }
-  }, [invoiceId]);
+      if (isEdit && invoiceId) {
+        await fetchInvoice();
+      }
+    };
+
+    loadData();
+  }, [isEdit, invoiceId]);
 
   // Fetch products for selected warehouse
   useEffect(() => {
     if (formData.warehouse_id) {
+      console.log('🔍 Warehouse seleccionado:', formData.warehouse_id);
       fetchProductsForWarehouse(formData.warehouse_id);
+    } else {
+      console.log('⚠️ No warehouse seleccionado, limpiando productos');
+      setProducts([]);
     }
   }, [formData.warehouse_id]);
 
@@ -131,21 +138,29 @@ const InvoiceEditPage = () => {
     try {
       const response = await customersAPI.getAll();
       setCustomers(response.data);
+      return response.data;
     } catch (error) {
       console.error('Error fetching customers:', error);
+      return [];
     }
   };
 
   const fetchProductsForWarehouse = async (warehouseId: number) => {
     try {
+      console.log('📦 Buscando productos para almacén:', warehouseId);
+
       // Get warehouse-products: [{warehouse_id, product_id, stock}, ...]
       const warehouseProductsResponse = await warehousesAPI.getProducts(warehouseId);
       const warehouseProducts = warehouseProductsResponse.data || [];
+
+      console.log('📦 Respuesta warehouse-products:', warehouseProducts);
+      console.log('📦 Cantidad de productos encontrados:', warehouseProducts.length);
 
       // Fetch complete product details for each product_id
       const productsWithStock = await Promise.all(
         warehouseProducts.map(async (wp: any) => {
           try {
+            console.log('📦 Obteniendo detalles del producto:', wp.product_id);
             const productResponse = await productsAPI.getById(wp.product_id);
             const product = productResponse.data;
 
@@ -156,7 +171,7 @@ const InvoiceEditPage = () => {
               warehouse_id: wp.warehouse_id
             };
           } catch (error) {
-            console.error(`Error fetching product ${wp.product_id}:`, error);
+            console.error(`❌ Error fetching product ${wp.product_id}:`, error);
             return null;
           }
         })
@@ -164,9 +179,11 @@ const InvoiceEditPage = () => {
 
       // Filter out null values and set products
       const validProducts = productsWithStock.filter(p => p !== null);
+      console.log('✅ Productos válidos:', validProducts);
+      console.log('✅ Total de productos a mostrar:', validProducts.length);
       setProducts(validProducts);
     } catch (error) {
-      console.error('Error fetching products for warehouse:', error);
+      console.error('❌ Error fetching products for warehouse:', error);
       setProducts([]);
     }
   };
@@ -175,23 +192,25 @@ const InvoiceEditPage = () => {
     try {
       const response = await warehousesAPI.getAll();
       setWarehouses(response.data);
+      return response.data;
     } catch (error) {
       console.error('Error fetching warehouses:', error);
+      return [];
     }
   };
 
   const fetchInvoice = async () => {
     if (!invoiceId) return;
-
     try {
       setInitialLoading(true);
       const response = await invoicesAPI.getById(invoiceId);
       const invoice = response.data;
 
-      // Mapear items desde formato del backend al formato del frontend
+      // Mapear items desde el formato del backend al formato del frontend
+      // Backend: price_per_unit, tax_rate -> Frontend: unit_price, tax_percent
       const mappedItems = (invoice.items || []).map((item: any) => ({
         product_id: item.product_id,
-        product_name: item.product_name || `Producto ${item.product_id}`,
+        product_name: item.product_name || `Producto ${item.product_id}`, // Backend puede no incluir nombre
         quantity: item.quantity,
         unit_price: item.price_per_unit || item.unit_price || 0, // Backend usa price_per_unit
         tax_percent: item.tax_rate !== undefined ? item.tax_rate : (item.tax_percent || 16), // Backend usa tax_rate
@@ -201,7 +220,6 @@ const InvoiceEditPage = () => {
       setFormData({
         customer_id: invoice.customer_id,
         warehouse_id: invoice.warehouse_id || null,
-        status: invoice.status || 'factura',
         discount: invoice.discount || 0,
         date: invoice.date || new Date().toISOString().split('T')[0],
         due_date: invoice.due_date || '',
@@ -209,7 +227,7 @@ const InvoiceEditPage = () => {
         notes: invoice.notes || '',
         payment_terms: invoice.payment_terms || '30',
 
-        // Venezuela SENIAT
+        // Venezuela SENIAT - cargar desde la factura
         transaction_type: invoice.transaction_type || 'contado',
         payment_method: invoice.payment_method || 'efectivo',
         credit_days: invoice.credit_days || 0,
@@ -218,14 +236,36 @@ const InvoiceEditPage = () => {
         customer_address: invoice.customer_address || ''
       });
 
-      const customer = customers.find(c => c.id === invoice.customer_id);
-      if (customer) {
+      // Obtener cliente individualmente
+      console.log('🔍 Obteniendo cliente ID:', invoice.customer_id);
+      try {
+        const customerResponse = await customersAPI.getById(invoice.customer_id);
+        const customer = customerResponse.data;
+        console.log('✅ Cliente obtenido:', customer);
         setSelectedCustomerName(customer.name);
+
+        // Agregar a la lista de clientes si no existe
+        if (!customers.find(c => c.id === customer.id)) {
+          setCustomers(prev => [...prev, customer]);
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo cliente:', error);
       }
 
-      const warehouse = warehouses.find(w => w.id === invoice.warehouse_id);
-      if (warehouse) {
+      // Obtener almacén individualmente
+      console.log('🔍 Obteniendo almacén ID:', invoice.warehouse_id);
+      try {
+        const warehouseResponse = await warehousesAPI.getById(invoice.warehouse_id);
+        const warehouse = warehouseResponse.data;
+        console.log('✅ Almacén obtenido:', warehouse);
         setSelectedWarehouseName(warehouse.name);
+
+        // Agregar a la lista de almacenes si no existe
+        if (!warehouses.find(w => w.id === warehouse.id)) {
+          setWarehouses(prev => [...prev, warehouse]);
+        }
+      } catch (error) {
+        console.error('❌ Error obteniendo almacén:', error);
       }
     } catch (error) {
       console.error('Error fetching invoice:', error);
@@ -261,8 +301,8 @@ const InvoiceEditPage = () => {
       product_name: product.name,
       quantity: 1,
       unit_price: product.price,
-      tax_percent: formData.iva_percentage, // Usar IVA general
-      is_exempt: false
+      tax_percent: 16, // Por defecto 16%
+      is_exempt: false // Por defecto no exento
     };
     setFormData(prev => ({
       ...prev,
@@ -353,14 +393,13 @@ const InvoiceEditPage = () => {
       const submitData = {
         customer_id: formData.customer_id,
         warehouse_id: formData.warehouse_id,
-        status: formData.status,
         discount: formData.discount,
         date: formData.date,
         due_date: formData.due_date,
         items: formData.items.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
-          tax_rate: item.tax_percent, // Backend usa tax_rate
+          tax_rate: item.tax_percent,
           is_exempt: item.is_exempt
         })),
         notes: formData.notes,
@@ -371,11 +410,28 @@ const InvoiceEditPage = () => {
         payment_method: formData.payment_method,
         credit_days: formData.credit_days,
         iva_percentage: formData.iva_percentage,
-        customer_phone: formData.customer_phone || undefined,
-        customer_address: formData.customer_address || undefined
+        customer_phone: formData.customer_phone,
+        customer_address: formData.customer_address
       };
 
-      await invoicesAPI.update(invoiceId, submitData);
+      // LOG DETALLADO - Ver exactamente qué se envía
+      console.log('=== DATOS SIENDO ENVIADOS ===');
+      console.log('customer_id:', submitData.customer_id, `(tipo: ${typeof submitData.customer_id})`);
+      console.log('warehouse_id:', submitData.warehouse_id, `(tipo: ${typeof submitData.warehouse_id})`);
+      console.log('discount:', submitData.discount, `(tipo: ${typeof submitData.discount})`);
+      console.log('date:', submitData.date, `(tipo: ${typeof submitData.date})`);
+      console.log('due_date:', submitData.due_date, `(tipo: ${typeof submitData.due_date})`);
+      console.log('items:', submitData.items, `(cantidad: ${submitData.items.length})`);
+      console.log('notes:', submitData.notes, `(tipo: ${typeof submitData.notes})`);
+      console.log('payment_terms:', submitData.payment_terms, `(tipo: ${typeof submitData.payment_terms})`);
+      console.log('JSON completo:', JSON.stringify(submitData, null, 2));
+      console.log('============================');
+
+      if (isEdit && invoiceId) {
+        await invoicesAPI.update(invoiceId, submitData);
+      } else {
+        await invoicesAPI.create(submitData);
+      }
 
       setSuccess(true);
 
@@ -392,9 +448,8 @@ const InvoiceEditPage = () => {
       }
 
       setTimeout(() => {
-        router.push(`/invoices/${invoiceId}`);
+        router.push('/invoices');
       }, 1500);
-
     } catch (error: any) {
       console.error('Error saving invoice:', error);
       setErrors({ general: extractErrorMessage(error) });
@@ -446,18 +501,22 @@ const InvoiceEditPage = () => {
     <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center space-x-4 mb-6">
-          <Link
-            href={`/invoices/${invoiceId}`}
-            className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-light text-gray-900 mb-2">Editar Factura</h1>
-            <p className="text-gray-500 font-light">
-              Modifica la información de la factura
-            </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Link
+              href="/invoices"
+              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-3xl font-light text-gray-900 mb-2">
+                {isEdit ? 'Editar Factura' : 'Nueva Factura'}
+              </h1>
+              <p className="text-gray-500 font-light">
+                {isEdit ? 'Modifica la información de la factura' : 'Crea una nueva factura de venta'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -468,7 +527,7 @@ const InvoiceEditPage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              Factura actualizada correctamente
+              {isEdit ? 'Factura actualizada correctamente' : 'Factura creada correctamente'}
             </p>
           </div>
         </div>
@@ -512,7 +571,7 @@ const InvoiceEditPage = () => {
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-
+                    
                     {showCustomerDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-10 max-h-60 overflow-y-auto">
                         {customers.map(customer => (
@@ -585,7 +644,7 @@ const InvoiceEditPage = () => {
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-
+                    
                     {showWarehouseDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-10 max-h-60 overflow-y-auto">
                         {warehouses.map(warehouse => (
@@ -607,21 +666,145 @@ const InvoiceEditPage = () => {
                   )}
                 </div>
 
-                {/* Status */}
+                {/* Discount */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Estado
+                    Descuento (%)
+                  </label>
+                  <div className="relative">
+                    <Percent className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="number"
+                      value={formData.discount}
+                      onChange={(e) => setFormData(prev => ({ ...prev, discount: parseFloat(e.target.value) || 0 }))}
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      placeholder="0"
+                    />
+                  </div>
+                </div>
+
+                {/* Payment Terms */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Plazo de Pago (días)
                   </label>
                   <select
-                    value={formData.status}
-                    onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+                    value={formData.payment_terms}
+                    onChange={(e) => setFormData(prev => ({ ...prev, payment_terms: e.target.value }))}
                     className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
                   >
-                    <option value="factura">Factura</option>
-                    <option value="presupuesto">Presupuesto</option>
-                    <option value="pendiente">Pendiente</option>
-                    <option value="pagada">Pagada</option>
+                    <option value="0">Al contado</option>
+                    <option value="7">7 días</option>
+                    <option value="15">15 días</option>
+                    <option value="30">30 días (por defecto)</option>
+                    <option value="60">60 días</option>
+                    <option value="90">90 días</option>
                   </select>
+                </div>
+
+                {/* Venezuela SENIAT Fields */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-4">Campos Venezuela (SENIAT)</h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Tipo de Transacción */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Tipo Transacción *
+                      </label>
+                      <select
+                        value={formData.transaction_type}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transaction_type: e.target.value as 'contado' | 'credito' }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value="contado">Contado</option>
+                        <option value="credito">Crédito</option>
+                      </select>
+                    </div>
+
+                    {/* Forma de Pago */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Forma de Pago
+                      </label>
+                      <select
+                        value={formData.payment_method}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="debito">Tarjeta Débito</option>
+                        <option value="credito">Tarjeta Crédito</option>
+                        <option value="zelle">Zelle</option>
+                        <option value="pago_movil">Pago Móvil</option>
+                      </select>
+                    </div>
+
+                    {/* Días de Crédito */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Días Crédito
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.credit_days}
+                        onChange={(e) => setFormData(prev => ({ ...prev, credit_days: parseInt(e.target.value) || 0 }))}
+                        min="0"
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        disabled={formData.transaction_type === 'contado'}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                    {/* Porcentaje IVA */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        IVA General (%)
+                      </label>
+                      <select
+                        value={formData.iva_percentage}
+                        onChange={(e) => setFormData(prev => ({ ...prev, iva_percentage: parseFloat(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      >
+                        <option value={16}>16% (General)</option>
+                        <option value={8}>8% (Reducido)</option>
+                        <option value={0}>0% (Exento)</option>
+                      </select>
+                    </div>
+
+                    {/* Teléfono Cliente */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-2">
+                        Teléfono Cliente
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.customer_phone || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, customer_phone: e.target.value }))}
+                        className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                        placeholder="+58 414-000-0000"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Dirección Cliente */}
+                  <div className="mt-6">
+                    <label className="block text-xs font-medium text-gray-700 mb-2">
+                      Dirección Cliente
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.customer_address || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, customer_address: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all outline-none text-sm"
+                      placeholder="Av. Principal con calle..."
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -707,7 +890,7 @@ const InvoiceEditPage = () => {
                           </button>
                         </div>
 
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-5 gap-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Cantidad
@@ -739,27 +922,45 @@ const InvoiceEditPage = () => {
 
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Impuesto %
+                              IVA %
                             </label>
-                            <div className="relative">
-                              <Percent className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3" />
+                            <select
+                              value={item.tax_percent}
+                              onChange={(e) => updateItem(index, 'tax_percent', parseFloat(e.target.value))}
+                              disabled={item.is_exempt}
+                              className={`w-full px-3 py-2 bg-white border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                                item.is_exempt ? 'border-gray-200 bg-gray-50 text-gray-400' : 'border-gray-200'
+                              }`}
+                            >
+                              <option value={16}>16%</option>
+                              <option value={8}>8%</option>
+                              <option value={0}>0%</option>
+                            </select>
+                          </div>
+
+                          <div className="flex items-end">
+                            <label className="flex items-center space-x-2 mb-3 cursor-pointer">
                               <input
-                                type="number"
-                                min="0"
-                                max="100"
-                                value={item.tax_percent}
-                                onChange={(e) => updateItem(index, 'tax_percent', parseFloat(e.target.value))}
-                                className="w-full pl-7 pr-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                type="checkbox"
+                                checked={item.is_exempt}
+                                onChange={(e) => updateItem(index, 'is_exempt', e.target.checked)}
+                                className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
                               />
-                            </div>
+                              <span className="text-xs font-medium text-gray-700">Exento</span>
+                            </label>
                           </div>
 
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
                               Subtotal
                             </label>
-                            <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm font-medium text-gray-900">
-                              ${(item.quantity * item.unit_price).toFixed(2)}
+                            <div className="px-3 py-2 bg-gray-100 rounded-lg text-sm">
+                              <span className={`font-medium ${item.is_exempt ? 'text-green-700' : 'text-gray-900'}`}>
+                                ${(item.quantity * item.unit_price).toFixed(2)}
+                              </span>
+                              {item.is_exempt && (
+                                <span className="block text-xs text-green-600">Exento</span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -795,7 +996,7 @@ const InvoiceEditPage = () => {
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
               <Link
-                href={`/invoices/${invoiceId}`}
+                href="/invoices"
                 className="px-6 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all font-light"
               >
                 Cancelar
@@ -811,7 +1012,7 @@ const InvoiceEditPage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : 'Actualizar Factura'}
+                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Factura' : 'Crear Factura'}
                 </span>
               </button>
             </div>
@@ -826,7 +1027,8 @@ const InvoiceEditPage = () => {
               <h3 className="text-xl font-light text-gray-900">Resumen</h3>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
+              <div className="space-y-3">
+                {/* Subtotal */}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium text-gray-900">
@@ -834,25 +1036,108 @@ const InvoiceEditPage = () => {
                   </span>
                 </div>
 
+                {/* Venezuela - Base Imponible */}
+                {totals.taxableBase > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-gray-500">Base Imponible</span>
+                    <span className="text-sm text-gray-700">
+                      {formatCurrency(totals.taxableBase)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Venezuela - Monto Exento */}
+                {totals.exemptAmount > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-green-600">Monto Exento</span>
+                    <span className="text-sm text-green-700">
+                      {formatCurrency(totals.exemptAmount)}
+                    </span>
+                  </div>
+                )}
+
+                {/* IVA */}
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Impuestos</span>
+                  <span className="text-gray-600">IVA ({formData.iva_percentage}%)</span>
                   <span className="font-medium text-gray-900">
                     {formatCurrency(totals.tax)}
                   </span>
                 </div>
 
+                {/* Total */}
                 <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <span className="font-medium text-gray-900">Total</span>
+                  <span className="font-semibold text-gray-900">Total</span>
                   <span className="text-2xl font-light text-blue-600">
                     {formatCurrency(totals.total)}
                   </span>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-blue-50 rounded-2xl">
+              {/* Venezuela Info */}
+              {(totals.taxableBase > 0 || totals.exemptAmount > 0) && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-xl">
+                  <p className="text-xs text-gray-600 mb-2 font-medium">Desglose IVA (Venezuela):</p>
+                  <div className="space-y-1">
+                    {totals.taxableBase > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500">Operaciones gravadas:</span>
+                        <span className="text-gray-700">{formatCurrency(totals.taxableBase)}</span>
+                      </div>
+                    )}
+                    {totals.exemptAmount > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-green-600">Operaciones exentas:</span>
+                        <span className="text-green-700">{formatCurrency(totals.exemptAmount)}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 p-4 bg-blue-50 rounded-2xl">
                 <p className="text-sm text-blue-900">
                   <span className="font-medium">Items:</span> {formData.items.length}
                 </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Help Card */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-xl font-light text-gray-900">Consejos</h3>
+            </div>
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Cliente requerido</p>
+                    <p className="text-xs text-gray-500">
+                      Selecciona el cliente antes de guardar
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Productos únicos</p>
+                    <p className="text-xs text-gray-500">
+                      Cada producto debe agregarse una sola vez
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start space-x-3">
+                  <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Impuestos flexibles</p>
+                    <p className="text-xs text-gray-500">
+                      Puedes ajustar el % de impuesto por producto
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -862,4 +1147,4 @@ const InvoiceEditPage = () => {
   );
 };
 
-export default InvoiceEditPage;
+export default InvoiceFormPage;

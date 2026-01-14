@@ -149,7 +149,7 @@ const DashboardPage = () => {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ category, count }) => `${category}: ${count}`}
+                    label={(entry: any) => `${entry.category}: ${entry.count}`}
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="count"
@@ -176,7 +176,7 @@ const DashboardPage = () => {
                   <XAxis dataKey="month" />
                   <YAxis />
                   <Tooltip
-                    formatter={(value: number) => `$${value.toLocaleString()}`}
+                    formatter={(value: number | undefined) => `$${(value || 0).toLocaleString()}`}
                   />
                   <Legend />
                   <Bar dataKey="ventas" fill="#3b82f6" name="Ventas" radius={[8, 8, 0, 0]} />

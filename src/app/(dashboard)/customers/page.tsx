@@ -66,7 +66,7 @@ const CustomersPage = () => {
   const filteredCustomers = customers
     .filter(customer => {
       return customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             (customer.email && customer.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
              (customer.tax_id && customer.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
     })
     .sort((a, b) => {

@@ -20,6 +20,7 @@ import { extractErrorMessage } from '@/lib/errorHandler';
 import { Customer } from '@/types/customer';
 import { GooglePlacesAutocomplete } from '@/components/GooglePlacesAutocomplete';
 import { GoogleMapView } from '@/components/GoogleMapView';
+import { GoogleMapsWrapper } from '@/components/GoogleMapsWrapper';
 
 interface CustomerFormData {
   name: string;
@@ -63,19 +64,22 @@ const CustomerFormPage = () => {
 
   const fetchCustomer = async () => {
     if (!customerId) return;
-    
+
     try {
       setInitialLoading(true);
       const response = await customersAPI.getById(customerId);
       const customer: Customer = response.data;
-      
+
       setFormData({
         name: customer.name || '',
         email: customer.email || '',
         phone: customer.phone || '',
         address: customer.address || '',
         tax_id: customer.tax_id || '',
-        is_active: customer.is_active
+        location: customer.latitude && customer.longitude ? {
+          lat: customer.latitude,
+          lng: customer.longitude
+        } : undefined
       });
     } catch (error) {
       console.error('Error fetching customer:', error);
@@ -130,20 +134,22 @@ const CustomerFormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
       setLoading(true);
-      
+
       const submitData = {
         name: formData.name.trim(),
         email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
-        tax_id: formData.tax_id.trim() || undefined
+        tax_id: formData.tax_id.trim() || undefined,
+        latitude: formData.location?.lat,
+        longitude: formData.location?.lng
       };
 
       if (isEdit && customerId) {
@@ -153,7 +159,7 @@ const CustomerFormPage = () => {
       }
 
       setSuccess(true);
-      
+
       setTimeout(() => {
         if (isEdit) {
           router.push(`/customers/${customerId}`);
@@ -182,8 +188,8 @@ const CustomerFormPage = () => {
 
   return (
     <div className="p-6 lg:p-8">
-      {/* Header */}
-      <div className="mb-8">
+        {/* Header */}
+        <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-4">
             <Link
@@ -231,11 +237,11 @@ const CustomerFormPage = () => {
         <div className="xl:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100">
               <div className="p-6 border-b border-gray-100">
                 <h3 className="text-xl font-light text-gray-900">Información Básica</h3>
               </div>
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-6 relative">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
                     Nombre del Cliente *
@@ -315,12 +321,14 @@ const CustomerFormPage = () => {
                 </div>
 
                 <div>
-                  <GooglePlacesAutocomplete
-                    value={formData.address}
-                    onChange={handleAddressChange}
-                    label="Dirección"
-                    placeholder="Buscar dirección en Google Maps..."
-                  />
+                  <GoogleMapsWrapper>
+                    <GooglePlacesAutocomplete
+                      value={formData.address}
+                      onChange={handleAddressChange}
+                      label="Dirección"
+                      placeholder="Buscar dirección en Google Maps..."
+                    />
+                  </GoogleMapsWrapper>
                 </div>
               </div>
             </div>
@@ -332,17 +340,19 @@ const CustomerFormPage = () => {
                   <h3 className="text-xl font-light text-gray-900">Ubicación en Mapa</h3>
                 </div>
                 <div className="p-6">
-                  <GoogleMapView
-                    lat={formData.location.lat}
-                    lng={formData.location.lng}
-                    address={formData.address}
-                    onLocationChange={(lat, lng) => {
-                      setFormData(prev => ({
-                        ...prev,
+                  <GoogleMapsWrapper>
+                    <GoogleMapView
+                      lat={formData.location.lat}
+                      lng={formData.location.lng}
+                      address={formData.address}
+                      onLocationChange={(lat, lng) => {
+                        setFormData(prev => ({
+                          ...prev,
                         location: { lat, lng }
                       }));
                     }}
                   />
+                  </GoogleMapsWrapper>
                 </div>
               </div>
             )}

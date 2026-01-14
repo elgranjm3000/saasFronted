@@ -15,7 +15,7 @@ export default function DashboardHeader() {
             <Menu className="w-6 h-6" />
           </button>
           <h1 className="text-xl font-semibold text-slate-900">
-            {user?.company.name}
+            {user?.company?.name || 'Mi Empresa'}
           </h1>
         </div>
 

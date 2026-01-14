@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
-  Warehouse,
+  Warehouse as WarehouseIcon,
   Plus,
   Search,
   Filter,

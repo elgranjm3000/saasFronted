@@ -1,3 +1,5 @@
+import { Supplier } from './supplier';
+
 export interface Purchase {
   id: number;
   company_id: number;

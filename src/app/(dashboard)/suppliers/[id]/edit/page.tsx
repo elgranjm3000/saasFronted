@@ -65,11 +65,11 @@ const SupplierFormPage = () => {
 
       setFormData({
         name: supplier.name || '',
-        email: supplier.email || '',
-        phone: supplier.phone || '',
+        email: '',
+        phone: supplier.contact || '',
         address: supplier.address || '',
         tax_id: supplier.tax_id || '',
-        contact_person: supplier.contact_person || ''
+        contact_person: ''
       });
     } catch (error) {
       console.error('Error fetching supplier:', error);

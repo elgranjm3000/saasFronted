@@ -6,6 +6,8 @@ export interface Customer {
   phone?: string | null;
   address?: string | null;
   tax_id?: string | null; // RIF: J-XXXXXXX-X o V-XXXXXXX-X
+  latitude?: number | null;
+  longitude?: number | null;
   company_id: number;
   is_active: boolean;
   created_at: string;
@@ -18,6 +20,8 @@ export interface CustomerCreate {
   phone?: string | null;
   address?: string | null;
   tax_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface CustomerUpdate {
@@ -26,6 +30,8 @@ export interface CustomerUpdate {
   phone?: string | null;
   address?: string | null;
   tax_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   is_active?: boolean;
 }
 

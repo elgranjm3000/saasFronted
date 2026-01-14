@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react';
+import { User, LoginRequest } from '@/types/auth';
 
 interface AuthContextType {
   user: User | null;

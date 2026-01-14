@@ -150,51 +150,16 @@ const SupplierDetailPage = ({ params }: SupplierDetailPageProps) => {
                 <div className="flex-1">
                   <div className="mb-4">
                     <h2 className="text-2xl font-light text-gray-900 mb-2">{supplier.name}</h2>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-3 py-1 text-sm rounded-full ${
-                        supplier.is_active
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {supplier.is_active ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
                   </div>
 
-                  {supplier.contact_person && (
+                  {supplier.contact && (
                     <div className="mb-2">
                       <div className="flex items-center text-gray-600">
                         <User className="w-4 h-4 mr-2" />
-                        <span>Contacto: {supplier.contact_person}</span>
+                        <span>Contacto: {supplier.contact}</span>
                       </div>
                     </div>
                   )}
-
-                  {/* Key Metrics */}
-                  <div className="grid grid-cols-2 gap-4 mt-6">
-                    {supplier.total_purchases !== undefined && (
-                      <div className="bg-gray-50/80 rounded-2xl p-4">
-                        <div className="flex items-center mb-2">
-                          <Package className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-500">Compras</span>
-                        </div>
-                        <p className="text-2xl font-light text-gray-900">
-                          {supplier.total_purchases}
-                        </p>
-                      </div>
-                    )}
-                    {supplier.total_purchase_amount !== undefined && (
-                      <div className="bg-gray-50/80 rounded-2xl p-4">
-                        <div className="flex items-center mb-2">
-                          <DollarSign className="w-4 h-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-500">Total Compras</span>
-                        </div>
-                        <p className="text-2xl font-light text-gray-900">
-                          ${supplier.total_purchase_amount.toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
                 </div>
               </div>
             </div>
@@ -207,22 +172,12 @@ const SupplierDetailPage = ({ params }: SupplierDetailPageProps) => {
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {supplier.email && (
-                  <div className="flex items-center">
-                    <Mail className="w-5 h-5 text-gray-400 mr-3" />
-                    <div>
-                      <p className="text-sm text-gray-500">Email</p>
-                      <p className="font-medium text-gray-900">{supplier.email}</p>
-                    </div>
-                  </div>
-                )}
-
-                {supplier.phone && (
+                {supplier.contact && (
                   <div className="flex items-center">
                     <Phone className="w-5 h-5 text-gray-400 mr-3" />
                     <div>
-                      <p className="text-sm text-gray-500">Teléfono</p>
-                      <p className="font-medium text-gray-900">{supplier.phone}</p>
+                      <p className="text-sm text-gray-500">Contacto</p>
+                      <p className="font-medium text-gray-900">{supplier.contact}</p>
                     </div>
                   </div>
                 )}
@@ -253,33 +208,6 @@ const SupplierDetailPage = ({ params }: SupplierDetailPageProps) => {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Estado</h3>
-            </div>
-            <div className="p-6">
-              <div className={`flex items-center justify-center w-full py-4 px-6 rounded-2xl ${
-                supplier.is_active ? 'bg-green-100' : 'bg-red-100'
-              } mb-4`}>
-                <span className={`font-medium ${
-                  supplier.is_active ? 'text-green-800' : 'text-red-800'
-                }`}>
-                  {supplier.is_active ? 'Proveedor Activo' : 'Proveedor Inactivo'}
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-sm text-gray-500">Compras realizadas</span>
-                  <span className="font-medium text-gray-900">
-                    {supplier.total_purchases || 0}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Quick Actions */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">

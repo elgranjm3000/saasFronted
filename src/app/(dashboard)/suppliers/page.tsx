@@ -18,8 +18,6 @@ import {
   Download,
   Upload,
   Building2,
-  UserCheck,
-  UserX,
   Contact
 } from 'lucide-react';
 import { suppliersAPI } from '@/lib/api';
@@ -34,9 +32,8 @@ const SuppliersPage = () => {
   const [filterOpen, setFilterOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [selectedSuppliers, setSelectedSuppliers] = useState<number[]>([]);
-  const [sortBy, setSortBy] = useState<'name' | 'email' | 'created_at'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'created_at'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  const [statusFilter, setStatusFilter] = useState<string>('');
 
   useEffect(() => {
     fetchSuppliers();
@@ -68,15 +65,10 @@ const SuppliersPage = () => {
   const filteredSuppliers = suppliers
     .filter(supplier => {
       const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           supplier.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           (supplier.tax_id && supplier.tax_id.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                           (supplier.contact_person && supplier.contact_person.toLowerCase().includes(searchTerm.toLowerCase()));
-      
-      const matchesStatus = statusFilter === '' || 
-                           (statusFilter === 'active' && supplier.is_active) ||
-                           (statusFilter === 'inactive' && !supplier.is_active);
-      
-      return matchesSearch && matchesStatus;
+                           (supplier.contact && supplier.contact.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                           (supplier.tax_id && supplier.tax_id.toLowerCase().includes(searchTerm.toLowerCase()));
+
+      return matchesSearch;
     })
     .sort((a, b) => {
       let aValue: any = a[sortBy];
@@ -93,8 +85,6 @@ const SuppliersPage = () => {
 
   const stats = {
     total: suppliers.length,
-    active: suppliers.filter(s => s.is_active).length,
-    inactive: suppliers.filter(s => !s.is_active).length,
     thisMonth: suppliers.filter(s => {
       const supplierDate = new Date(s.created_at);
       const now = new Date();
@@ -136,20 +126,10 @@ const SuppliersPage = () => {
             {supplier.name}
           </h3>
           <div className="space-y-1">
-            <div className="flex items-center text-sm text-gray-500">
-              <Mail className="w-3 h-3 mr-2" />
-              {supplier.email}
-            </div>
-            {supplier.phone && (
+            {supplier.contact && (
               <div className="flex items-center text-sm text-gray-500">
                 <Phone className="w-3 h-3 mr-2" />
-                {supplier.phone}
-              </div>
-            )}
-            {supplier.contact_person && (
-              <div className="flex items-center text-sm text-gray-500">
-                <Contact className="w-3 h-3 mr-2" />
-                {supplier.contact_person}
+                {supplier.contact}
               </div>
             )}
             {supplier.tax_id && (
@@ -160,25 +140,8 @@ const SuppliersPage = () => {
             )}
           </div>
         </div>
-        
-        <div className="flex items-center justify-between">
-          <span className={`flex items-center px-3 py-1 text-sm rounded-full ${
-            supplier.is_active 
-              ? 'bg-green-100 text-green-600' 
-              : 'bg-red-100 text-red-600'
-          }`}>
-            {supplier.is_active ? (
-              <>
-                <UserCheck className="w-3 h-3 mr-1" />
-                Activo
-              </>
-            ) : (
-              <>
-                <UserX className="w-3 h-3 mr-1" />
-                Inactivo
-              </>
-            )}
-          </span>
+
+        <div className="flex items-center justify-end">
           <span className="text-xs text-gray-500">
             {formatDate(supplier.created_at)}
           </span>
@@ -237,34 +200,6 @@ const SuppliersPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Proveedores Activos
-                </p>
-                <p className="text-2xl font-light text-green-600">{stats.active}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <UserCheck className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Proveedores Inactivos
-                </p>
-                <p className="text-2xl font-light text-red-600">{stats.inactive}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <UserX className="w-7 h-7 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                   Este Mes
                 </p>
                 <p className="text-2xl font-light text-purple-600">{stats.thisMonth}</p>
@@ -295,22 +230,11 @@ const SuppliersPage = () => {
           
           <div className="flex items-center space-x-3">
             <select 
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-            >
-              <option value="">Todos los estados</option>
-              <option value="active">Activos</option>
-              <option value="inactive">Inactivos</option>
-            </select>
-
-            <select 
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as 'name' | 'email' | 'created_at')}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'created_at')}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
             >
               <option value="name">Ordenar por Nombre</option>
-              <option value="email">Ordenar por Email</option>
               <option value="created_at">Ordenar por Fecha</option>
             </select>
             
@@ -374,11 +298,8 @@ const SuppliersPage = () => {
                     <input type="checkbox" className="rounded border-gray-300" />
                   </th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Proveedor</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Email</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Teléfono</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Contacto</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Tax ID</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
                 </tr>
               </thead>
@@ -400,35 +321,10 @@ const SuppliersPage = () => {
                       </div>
                     </td>
                     <td className="py-4 px-6 text-gray-900">
-                      {supplier.email}
-                    </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      {supplier.phone || '-'}
-                    </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      {supplier.contact_person || '-'}
+                      {supplier.contact || '-'}
                     </td>
                     <td className="py-4 px-6 text-gray-900 font-mono text-sm">
                       {supplier.tax_id || '-'}
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className={`flex items-center px-3 py-1 text-sm rounded-full ${
-                        supplier.is_active 
-                          ? 'bg-green-100 text-green-600' 
-                          : 'bg-red-100 text-red-600'
-                      }`}>
-                        {supplier.is_active ? (
-                          <>
-                            <UserCheck className="w-3 h-3 mr-1" />
-                            Activo
-                          </>
-                        ) : (
-                          <>
-                            <UserX className="w-3 h-3 mr-1" />
-                            Inactivo
-                          </>
-                        )}
-                      </span>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center space-x-2">

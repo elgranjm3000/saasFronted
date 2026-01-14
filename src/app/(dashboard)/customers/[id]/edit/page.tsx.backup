@@ -5,87 +5,99 @@ import { useRouter, useParams } from 'next/navigation';
 import {
   ArrowLeft,
   Save,
-  Building2,
+  Users,
   AlertCircle,
   CheckCircle,
   Loader2,
   Mail,
   Phone,
   MapPin,
-  User,
-  Hash
+  Hash,
+  Building2
 } from 'lucide-react';
-import { suppliersAPI } from '@/lib/api';
+import { customersAPI } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errorHandler';
-import { Supplier } from '@/types/supplier';
+import { Customer } from '@/types/customer';
+import { GooglePlacesAutocomplete } from '@/components/GooglePlacesAutocomplete';
+import { GoogleMapView } from '@/components/GoogleMapView';
+import { GoogleMapsWrapper } from '@/components/GoogleMapsWrapper';
 
-interface SupplierFormData {
+interface CustomerFormData {
   name: string;
   email: string;
   phone: string;
   address: string;
   tax_id: string;
-  contact_person: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
 }
 
-const SupplierFormPage = () => {
-  const [formData, setFormData] = useState<SupplierFormData>({
+const CustomerFormPage = () => {
+  const [formData, setFormData] = useState<CustomerFormData>({
     name: '',
     email: '',
     phone: '',
     address: '',
     tax_id: '',
-    contact_person: ''
+    location: undefined
   });
-
+  
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
-
+  
   const router = useRouter();
   const params = useParams();
-
+  
+  // Determinar si estamos editando o creando
   const isEdit = params?.id && params.id !== 'new';
-  const supplierId = isEdit ? Number(params.id) : null;
+  const customerId = isEdit ? Number(params.id) : null;
 
   useEffect(() => {
-    if (isEdit && supplierId) {
-      fetchSupplier();
+    if (isEdit && customerId) {
+      fetchCustomer();
     }
-  }, [isEdit, supplierId]);
+  }, [isEdit, customerId]);
 
-  const fetchSupplier = async () => {
-    if (!supplierId) return;
+  const fetchCustomer = async () => {
+    if (!customerId) return;
 
     try {
       setInitialLoading(true);
-      const response = await suppliersAPI.getById(supplierId);
-      const supplier: Supplier = response.data;
+      const response = await customersAPI.getById(customerId);
+      const customer: Customer = response.data;
 
       setFormData({
-        name: supplier.name || '',
-        email: '',
-        phone: supplier.contact || '',
-        address: supplier.address || '',
-        tax_id: supplier.tax_id || '',
-        contact_person: ''
+        name: customer.name || '',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        address: customer.address || '',
+        tax_id: customer.tax_id || '',
+        location: customer.latitude && customer.longitude ? {
+          lat: customer.latitude,
+          lng: customer.longitude
+        } : undefined
       });
     } catch (error) {
-      console.error('Error fetching supplier:', error);
-      setErrors({ general: 'Error al cargar el proveedor' });
+      console.error('Error fetching customer:', error);
+      setErrors({ general: 'Error al cargar el cliente' });
     } finally {
       setInitialLoading(false);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    const checked = (e.target as HTMLInputElement).checked;
+    
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
-
+    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -94,15 +106,25 @@ const SupplierFormPage = () => {
     }
   };
 
+  const handleAddressChange = (address: string, location?: { lat: number; lng: number }) => {
+    setFormData(prev => ({
+      ...prev,
+      address,
+      location
+    }));
+  };
+
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del proveedor es requerido';
+      newErrors.name = 'El nombre del cliente es requerido';
     }
 
-    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'El email no es válido';
+    if (!formData.email.trim()) {
+      newErrors.email = 'El email es requerido';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'El formato del email no es válido';
     }
 
     setErrors(newErrors);
@@ -111,7 +133,7 @@ const SupplierFormPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!validateForm()) {
       return;
     }
@@ -121,31 +143,32 @@ const SupplierFormPage = () => {
 
       const submitData = {
         name: formData.name.trim(),
-        email: formData.email.trim() || undefined,
+        email: formData.email.trim(),
         phone: formData.phone.trim() || undefined,
         address: formData.address.trim() || undefined,
         tax_id: formData.tax_id.trim() || undefined,
-        contact_person: formData.contact_person.trim() || undefined
+        latitude: formData.location?.lat,
+        longitude: formData.location?.lng
       };
 
-      if (isEdit && supplierId) {
-        await suppliersAPI.update(supplierId, submitData);
+      if (isEdit && customerId) {
+        await customersAPI.update(customerId, submitData);
       } else {
-        await suppliersAPI.create(submitData);
+        await customersAPI.create(submitData);
       }
 
       setSuccess(true);
-
+      
       setTimeout(() => {
         if (isEdit) {
-          router.push(`/suppliers/${supplierId}`);
+          router.push(`/customers/${customerId}`);
         } else {
-          router.push('/suppliers');
+          router.push('/customers');
         }
       }, 1500);
 
     } catch (error: any) {
-      console.error('Error saving supplier:', error);
+      console.error('Error saving customer:', error);
       setErrors({ general: extractErrorMessage(error) });
     } finally {
       setLoading(false);
@@ -164,22 +187,23 @@ const SupplierFormPage = () => {
 
   return (
     <div className="p-6 lg:p-8">
-      {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center space-x-4 mb-6">
-          <Link
-            href={isEdit ? `/suppliers/${supplierId}` : '/suppliers'}
-            className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div>
-            <h1 className="text-3xl font-light text-gray-900 mb-2">
-              {isEdit ? 'Editar Proveedor' : 'Nuevo Proveedor'}
-            </h1>
-            <p className="text-gray-500 font-light">
-              {isEdit ? 'Modifica la información del proveedor' : 'Completa la información para crear un nuevo proveedor'}
-            </p>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-4">
+            <Link
+              href={isEdit ? `/customers/${customerId}` : '/customers'}
+              className="p-3 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-2xl transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </Link>
+            <div>
+              <h1 className="text-3xl font-light text-gray-900 mb-2">
+                {isEdit ? 'Editar Cliente' : 'Nuevo Cliente'}
+              </h1>
+              <p className="text-gray-500 font-light">
+                {isEdit ? 'Modifica la información del cliente' : 'Completa la información para crear un nuevo cliente'}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -190,7 +214,7 @@ const SupplierFormPage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              {isEdit ? 'Proveedor actualizado correctamente' : 'Proveedor creado correctamente'}
+              {isEdit ? 'Cliente actualizado correctamente' : 'Cliente creado correctamente'}
             </p>
           </div>
         </div>
@@ -211,14 +235,14 @@ const SupplierFormPage = () => {
         <div className="xl:col-span-2">
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Basic Information */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100">
               <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Información del Proveedor</h3>
+                <h3 className="text-xl font-light text-gray-900">Información Básica</h3>
               </div>
-              <div className="p-6 space-y-6">
+              <div className="p-6 space-y-6 relative">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Nombre del Proveedor *
+                    Nombre del Cliente *
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -230,7 +254,7 @@ const SupplierFormPage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.name ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="Ej: Proveedora S.A."
+                      placeholder="Ej: Empresa ABC S.A."
                     />
                   </div>
                   {errors.name && (
@@ -240,32 +264,7 @@ const SupplierFormPage = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Persona de Contacto
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      name="contact_person"
-                      value={formData.contact_person}
-                      onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="Ej: Juan Pérez"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Información de Contacto</h3>
-              </div>
-              <div className="p-6 space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Email
+                    Email *
                   </label>
                   <div className="relative">
                     <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -277,7 +276,7 @@ const SupplierFormPage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.email ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="Ej: contacto@proveedora.com"
+                      placeholder="contacto@empresa.com"
                     />
                   </div>
                   {errors.email && (
@@ -297,39 +296,14 @@ const SupplierFormPage = () => {
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
-                      placeholder="Ej: +1234567890"
+                      placeholder="+1 234 567 8900"
                     />
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Dirección
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-4 text-gray-400 w-4 h-4" />
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      rows={2}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none resize-none"
-                      placeholder="Dirección completa del proveedor..."
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Tax Information */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <h3 className="text-xl font-light text-gray-900">Información Fiscal</h3>
-              </div>
-              <div className="p-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    RUC / Tax ID
+                    Tax ID / RUC
                   </label>
                   <div className="relative">
                     <Hash className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -338,18 +312,54 @@ const SupplierFormPage = () => {
                       name="tax_id"
                       value={formData.tax_id}
                       onChange={handleInputChange}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none font-mono"
-                      placeholder="Ej: 12345678901"
+                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      placeholder="123456789"
                     />
                   </div>
+                </div>
+
+                <div>
+                  <GoogleMapsWrapper>
+                    <GooglePlacesAutocomplete
+                      value={formData.address}
+                      onChange={handleAddressChange}
+                      label="Dirección"
+                      placeholder="Buscar dirección en Google Maps..."
+                    />
+                  </GoogleMapsWrapper>
                 </div>
               </div>
             </div>
 
+            {/* Map */}
+            {formData.location && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h3 className="text-xl font-light text-gray-900">Ubicación en Mapa</h3>
+                </div>
+                <div className="p-6">
+                  <GoogleMapsWrapper>
+                    <GoogleMapView
+                      lat={formData.location.lat}
+                      lng={formData.location.lng}
+                      address={formData.address}
+                      onLocationChange={(lat, lng) => {
+                        setFormData(prev => ({
+                          ...prev,
+                          location: { lat, lng }
+                        }));
+                      }}
+                    />
+                    </GoogleMapsWrapper>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
               <Link
-                href={isEdit ? `/suppliers/${supplierId}` : '/suppliers'}
+                href={isEdit ? `/customers/${customerId}` : '/customers'}
                 className="px-6 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all font-light"
               >
                 Cancelar
@@ -365,7 +375,7 @@ const SupplierFormPage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Proveedor' : 'Crear Proveedor'}
+                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Cliente' : 'Crear Cliente'}
                 </span>
               </button>
             </div>
@@ -381,23 +391,18 @@ const SupplierFormPage = () => {
             </div>
             <div className="p-6">
               <div className="text-center mb-6">
-                <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mx-auto flex items-center justify-center mb-4">
-                  <Building2 className="w-12 h-12 text-gray-400" />
+                <div className="w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl mx-auto flex items-center justify-center mb-4">
+                  <Users className="w-12 h-12 text-blue-600" />
                 </div>
                 <h4 className="font-medium text-gray-900 mb-1">
-                  {formData.name || 'Nombre del proveedor'}
+                  {formData.name || 'Nombre del cliente'}
                 </h4>
+                <p className="text-sm text-gray-500">
+                  {formData.email || 'email@cliente.com'}
+                </p>
               </div>
-
+              
               <div className="space-y-3">
-                {formData.email && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Email</span>
-                    <span className="font-medium text-gray-900 text-right">
-                      {formData.email}
-                    </span>
-                  </div>
-                )}
                 {formData.phone && (
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-500">Teléfono</span>
@@ -406,17 +411,9 @@ const SupplierFormPage = () => {
                     </span>
                   </div>
                 )}
-                {formData.contact_person && (
-                  <div className="flex justify-between">
-                    <span className="text-sm text-gray-500">Contacto</span>
-                    <span className="font-medium text-gray-900">
-                      {formData.contact_person}
-                    </span>
-                  </div>
-                )}
                 {formData.tax_id && (
-                  <div className="flex justify-between pt-3 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">RUC</span>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-500">Tax ID</span>
                     <span className="font-medium text-gray-900">
                       {formData.tax_id}
                     </span>
@@ -438,27 +435,27 @@ const SupplierFormPage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Información completa</p>
                     <p className="text-xs text-gray-500">
-                      Incluye todos los datos de contacto posibles
+                      Completa todos los campos posibles para facilitar la facturación
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Datos fiscales</p>
+                    <p className="text-sm font-medium text-gray-900">Email válido</p>
                     <p className="text-xs text-gray-500">
-                      El RUC es importante para facturación
+                      Asegúrate de que el email sea correcto para enviar documentos
                     </p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Contacto directo</p>
+                    <p className="text-sm font-medium text-gray-900">Tax ID</p>
                     <p className="text-xs text-gray-500">
-                      Especifica la persona de contacto para agilizar comunicaciones
+                      El Tax ID es importante para la facturación legal
                     </p>
                   </div>
                 </div>
@@ -471,4 +468,4 @@ const SupplierFormPage = () => {
   );
 };
 
-export default SupplierFormPage;
+export default CustomerFormPage;

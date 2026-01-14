@@ -405,7 +405,7 @@ const EditPurchasePage = () => {
     try {
       setLoading(true);
 
-      const submitData = {
+      const submitData: any = {
         supplier_id: Number(formData.supplier_id),
         warehouse_id: Number(formData.warehouse_id),
         status: formData.status,

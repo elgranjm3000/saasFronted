@@ -60,6 +60,34 @@ Sistema de gestión empresarial (ERP) moderno desarrollado con Next.js 14, TypeS
 
 ## 🎉 Mejoras Recientes
 
+### Integración de Google Maps
+- ✅ **Google Maps para Clientes**: Integración completa de Google Maps
+  - Autocomplete de direcciones con Google Places API
+  - Mapa interactivo mostrando ubicación del cliente
+  - Coordenadas (latitud/longitud) guardadas en base de datos
+  - Componentes optimizados para evitar problemas de hidratación
+  - Wrapper para prevenir errores de SSR
+
+### Gestión de Facturación
+- ✅ **Eliminación de Campo Estado**: Removido campo de estado en facturas
+  - El backend no gestiona el estado de las facturas
+  - Eliminado de lista, detalles y edición de facturas
+  - Interfaz más limpia y enfocada
+
+### Gestión de Proveedores
+- ✅ **Eliminación de Campo Estado**: Removido campo de estado en proveedores
+  - Eliminado filtro de estado en lista de proveedores
+  - Removidas estadísticas de activos/inactivos
+  - Eliminada columna y badge de estado
+  - Vista de detalles sin sección de estado
+
+### Mejoras en Visualización de Datos
+- ✅ **Nombres de Clientes en Facturas**: Mejora en la visualización
+  - Fetch individual de clientes via API (/api/v1/customers/{id})
+  - Nombres mostrados correctamente en lugar de "Cliente #11"
+  - Implementado en lista, detalles y edición de facturas
+  - Uso de Promise.all para carga paralela eficiente
+
 ### Arquitectura y Rendimiento
 - ✅ **Migración a Zustand**: Reemplazo de AuthContext por Zustand para estado global
   - Estado más ligero y performante

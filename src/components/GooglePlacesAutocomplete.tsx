@@ -1,9 +1,6 @@
 'use client'
-import React, { useState, useRef, useCallback } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
-import { useJsApiLoader } from '@react-google-maps/api';
-
-const libraries = ['places'];
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { MapPin, Loader2, AlertCircle } from 'lucide-react';
 
 interface GooglePlacesAutocompleteProps {
   value: string;
@@ -18,13 +15,65 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
   placeholder = 'Buscar dirección...',
   label = 'Dirección'
 }) => {
-  const { isLoaded, loadError } = useJsApiLoader();
-
   const [predictions, setPredictions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const autocompleteRef = useRef<any>(null);
   const placesRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Check if Google Maps is loaded
+  useEffect(() => {
+    const checkLoaded = () => {
+      if (typeof window !== 'undefined' && window.google && window.google.maps && window.google.maps.places) {
+        setIsLoaded(true);
+        setHasError(false);
+        return true;
+      }
+      return false;
+    };
+
+    // Check immediately
+    if (!checkLoaded()) {
+      // Check multiple times with increasing delays
+      const delays = [100, 300, 500, 1000, 2000];
+      const timers = delays.map(delay =>
+        setTimeout(() => {
+          if (checkLoaded()) {
+            // Clear remaining timers if loaded
+            timers.forEach(t => clearTimeout(t));
+          }
+        }, delay)
+      );
+
+      // If still not loaded after 2 seconds, show error
+      const errorTimer = setTimeout(() => {
+        if (!checkLoaded()) {
+          setHasError(true);
+        }
+      }, 3000);
+
+      return () => {
+        timers.forEach(t => clearTimeout(t));
+        clearTimeout(errorTimer);
+      };
+    }
+  }, []);
+
+  // Calculate dropdown position when predictions change
+  useEffect(() => {
+    if (predictions.length > 0 && inputRef.current) {
+      const rect = inputRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width
+      });
+    }
+  }, [predictions.length]);
 
   const fetchPredictions = useCallback((input: string) => {
     if (!isLoaded || !input) {
@@ -78,10 +127,12 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     onChange(value);
-    fetchPredictions(value);
+    if (!hasError) {
+      fetchPredictions(value);
+    }
   };
 
-  if (loadError) {
+  if (hasError) {
     return (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -90,17 +141,20 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
         <div className="relative">
           <MapPin className="absolute left-4 top-4 text-gray-400 w-4 h-4" />
           <input
-            type="text"
             ref={inputRef}
+            type="text"
             value={value}
             onChange={handleInputChange}
-            className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-red-300 rounded-2xl focus:bg-white focus:border-red-400 focus:ring-4 focus:ring-red-100 transition-all outline-none"
-            placeholder="Error cargando Google Maps - verifica tu API Key"
-            disabled
+            className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-orange-300 rounded-2xl focus:bg-white focus:border-orange-400 focus:ring-4 focus:ring-orange-100 transition-all outline-none"
+            placeholder={placeholder}
           />
+          <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+            <AlertCircle className="w-5 h-5 text-orange-500" />
+          </div>
         </div>
-        <p className="mt-2 text-sm text-red-600">
-          Error al cargar Google Maps. Verifica que NEXT_PUBLIC_GOOGLE_MAPS_KEY esté configurado en .env.local
+        <p className="mt-2 text-xs text-orange-600 flex items-center">
+          <AlertCircle className="w-3 h-3 mr-1" />
+          Google Maps no disponible. Ingresa la dirección manualmente.
         </p>
       </div>
     );
@@ -125,12 +179,13 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
             <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
           </div>
         </div>
+        <p className="mt-2 text-xs text-gray-500">Cargando Google Maps...</p>
       </div>
     );
   }
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <label className="block text-sm font-medium text-gray-700 mb-3">
         {label}
       </label>
@@ -153,21 +208,31 @@ export const GooglePlacesAutocomplete: React.FC<GooglePlacesAutocompleteProps> =
       </div>
 
       {predictions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+        <div
+          className="fixed z-[9999] bg-white border border-gray-200 rounded-2xl shadow-2xl max-h-80 overflow-y-auto"
+          style={{
+            top: `${dropdownPosition.top}px`,
+            left: `${dropdownPosition.left}px`,
+            width: `${dropdownPosition.width}px`
+          }}
+        >
+          <div className="sticky top-0 bg-gray-50 px-4 py-2 border-b border-gray-200">
+            <p className="text-xs font-medium text-gray-500">Sugerencias de Google Maps</p>
+          </div>
           {predictions.map((prediction) => (
             <button
               key={prediction.place_id}
               type="button"
               onClick={() => getPlaceDetails(prediction.place_id)}
-              className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0 focus:bg-blue-50 focus:outline-none"
             >
               <div className="flex items-start space-x-3">
-                <MapPin className="w-4 h-4 text-gray-400 mt-1 flex-shrink-0" />
+                <MapPin className="w-4 h-4 text-blue-500 mt-1 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
                     {prediction.structured_formatting?.main_text}
                   </p>
-                  <p className="text-xs text-gray-500 truncate">
+                  <p className="text-xs text-gray-600 truncate">
                     {prediction.structured_formatting?.secondary_text}
                   </p>
                 </div>

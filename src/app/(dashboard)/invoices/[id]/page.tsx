@@ -26,8 +26,9 @@ import {
   Eye,
   X
 } from 'lucide-react';
-import { invoicesAPI } from '@/lib/api';
+import { invoicesAPI, customersAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { Customer } from '@/types/customer';
 
 interface InvoiceItem {
   product_id: number;
@@ -43,12 +44,14 @@ interface Invoice {
   id: number;
   invoice_number: string;
   customer_id: number;
+  customer_name?: string;
   customer?: {
     id: number;
     name: string;
     email: string;
     phone?: string;
     address?: string;
+    tax_id?: string;
   };
   date: string; // Backend usa 'date', no 'issue_date'
   due_date?: string;
@@ -100,7 +103,21 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
     try {
       setLoading(true);
       const response = await invoicesAPI.getById(Number(params.id));
-      setInvoice(response.data);
+      const invoiceData = response.data;
+
+      // Obtener nombre del cliente
+      if (invoiceData.customer_id) {
+        try {
+          const customerResponse = await customersAPI.getById(invoiceData.customer_id);
+          const customer: Customer = customerResponse.data;
+          invoiceData.customer_name = customer.name;
+        } catch (error) {
+          console.error('Error fetching customer:', error);
+          invoiceData.customer_name = `Cliente #${invoiceData.customer_id}`;
+        }
+      }
+
+      setInvoice(invoiceData);
     } catch (error: any) {
       console.error('Error fetching invoice:', error);
       setError('Error al cargar la factura');
@@ -128,6 +145,8 @@ const InvoiceDetailPage = ({ params }: InvoiceDetailPageProps) => {
   };
 
   const handleDownloadPDF = async () => {
+    if (!invoice) return;
+
     try {
       // Crear contenido de texto simple por ahora
       const content = `
@@ -138,7 +157,7 @@ Vencimiento: ${invoice.due_date ? formatDate(invoice.due_date, 'long') : 'N/A'}
 
 CLIENTE
 -------
-${invoice.customer?.name || 'N/A'}
+${invoice.customer_name || invoice.customer?.name || 'N/A'}
 ${invoice.customer?.email || ''}
 ${invoice.customer?.phone || ''}
 ${invoice.customer?.address || ''}
@@ -156,7 +175,6 @@ ${invoice.exempt_amount ? `Monto Exento: ${formatCurrency(invoice.exempt_amount)
 ${invoice.iva_amount ? `IVA (${invoice.iva_percentage || 16}%): ${formatCurrency(invoice.iva_amount)}` : ''}
 TOTAL: ${formatCurrency(invoice.total_amount)}
 
-Estado: ${invoice.status}
 Notas: ${invoice.notes || 'N/A'}
       `.trim();
 
@@ -177,9 +195,11 @@ Notas: ${invoice.notes || 'N/A'}
   };
 
   const handleSendEmail = () => {
+    if (!invoice) return;
+
     const subject = encodeURIComponent(`Factura ${invoice.invoice_number}`);
     const body = encodeURIComponent(`
-Estimado/a ${invoice.customer?.name},
+Estimado/a ${invoice.customer_name || invoice.customer?.name},
 
 Adjunto encontrará la factura ${invoice.invoice_number} por un total de ${formatCurrency(invoice.total_amount)}.
 
@@ -190,17 +210,6 @@ Saludos cordiales.
     `.trim());
 
     window.location.href = `mailto:${invoice.customer?.email}?subject=${subject}&body=${body}`;
-  };
-
-  const getStatusInfo = (status: string) => {
-    const statusMap: Record<string, { color: string; bg: string; icon: any; label: string }> = {
-      'presupuesto': { color: 'text-blue-600', bg: 'bg-blue-100', icon: FileText, label: 'Presupuesto' },
-      'pendiente': { color: 'text-orange-600', bg: 'bg-orange-100', icon: Clock, label: 'Pendiente' },
-      'pagada': { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle, label: 'Pagada' },
-      'vencida': { color: 'text-red-600', bg: 'bg-red-100', icon: AlertTriangle, label: 'Vencida' },
-      'cancelada': { color: 'text-gray-600', bg: 'bg-gray-100', icon: FileText, label: 'Cancelada' }
-    };
-    return statusMap[status] || statusMap['pendiente'];
   };
 
   const getDaysUntilDue = () => {
@@ -243,8 +252,6 @@ Saludos cordiales.
     );
   }
 
-  const statusInfo = getStatusInfo(invoice.status);
-  const StatusIcon = statusInfo.icon;
   const daysUntilDue = getDaysUntilDue();
 
   return (
@@ -263,15 +270,9 @@ Saludos cordiales.
               <h1 className="text-3xl font-light text-gray-900 mb-2">
                 {invoice.invoice_number}
               </h1>
-              <div className="flex items-center space-x-4">
-                <span className={`px-3 py-1 text-sm rounded-full ${statusInfo.bg} ${statusInfo.color} inline-flex items-center`}>
-                  <StatusIcon className="w-3 h-3 mr-2" />
-                  {statusInfo.label}
-                </span>
-                <p className="text-gray-500 font-light">
-                  Creado: {formatDate(invoice.created_at)}
-                </p>
-              </div>
+              <p className="text-gray-500 font-light">
+                Creado: {formatDate(invoice.created_at)}
+              </p>
             </div>
           </div>
 
@@ -364,7 +365,7 @@ Saludos cordiales.
                   <div className="space-y-3">
                     <div className="flex items-center">
                       <User className="w-4 h-4 text-gray-400 mr-3" />
-                      <span className="text-gray-900 font-medium">{invoice.customer?.name || '-'}</span>
+                      <span className="text-gray-900 font-medium">{invoice.customer_name || invoice.customer?.name || '-'}</span>
                     </div>
                     {invoice.customer?.email && (
                       <div className="flex items-center">
@@ -412,7 +413,7 @@ Saludos cordiales.
                           </span>
                         </div>
                       )}
-                      {invoice.transaction_type === 'credito' && invoice.credit_days > 0 && (
+                      {invoice.transaction_type === 'credito' && (invoice.credit_days || 0) > 0 && (
                         <div className="flex items-center justify-between">
                           <span className="text-gray-600 text-xs">Días Crédito</span>
                           <span className="font-medium text-gray-900">{invoice.credit_days}</span>
@@ -425,19 +426,19 @@ Saludos cordiales.
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-4">Información de Pago</h3>
                   <div className="space-y-3">
-                    {invoice.taxable_base > 0 && (
+                    {(invoice.taxable_base || 0) > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 text-xs">Base Imponible</span>
                         <span className="font-medium text-gray-900">{formatCurrency(invoice.taxable_base)}</span>
                       </div>
                     )}
-                    {invoice.exempt_amount > 0 && (
+                    {(invoice.exempt_amount || 0) > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-green-600 text-xs">Monto Exento</span>
                         <span className="font-medium text-green-700">{formatCurrency(invoice.exempt_amount)}</span>
                       </div>
                     )}
-                    {invoice.iva_amount > 0 && (
+                    {(invoice.iva_amount || 0) > 0 && (
                       <div className="flex items-center justify-between">
                         <span className="text-gray-600 text-xs">IVA ({invoice.iva_percentage || 16}%)</span>
                         <span className="font-medium text-gray-900">{formatCurrency(invoice.iva_amount)}</span>
@@ -514,19 +515,12 @@ Saludos cordiales.
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Status Card */}
+          {/* Payment Info Card */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden sticky top-8">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Estado</h3>
+              <h3 className="text-xl font-light text-gray-900">Información de Pago</h3>
             </div>
             <div className="p-6">
-              <div className={`flex items-center justify-center w-full py-6 px-4 rounded-2xl ${statusInfo.bg} mb-4`}>
-                <StatusIcon className={`w-8 h-8 ${statusInfo.color} mr-3`} />
-                <span className={`text-lg font-medium ${statusInfo.color}`}>
-                  {statusInfo.label}
-                </span>
-              </div>
-
               {daysUntilDue !== null && (
                 <div className="p-4 bg-blue-50 rounded-2xl mb-4">
                   {daysUntilDue > 0 ? (
@@ -546,19 +540,19 @@ Saludos cordiales.
               )}
 
               <div className="space-y-3 text-sm">
-                {invoice.taxable_base > 0 && (
+                {(invoice.taxable_base || 0) > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">Base Imponible</span>
                     <span className="font-medium text-gray-900">{formatCurrency(invoice.taxable_base)}</span>
                   </div>
                 )}
-                {invoice.exempt_amount > 0 && (
+                {(invoice.exempt_amount || 0) > 0 && (
                   <div className="flex justify-between">
                     <span className="text-green-600">Monto Exento</span>
                     <span className="font-medium text-green-700">{formatCurrency(invoice.exempt_amount)}</span>
                   </div>
                 )}
-                {invoice.iva_amount > 0 && (
+                {(invoice.iva_amount || 0) > 0 && (
                   <div className="flex justify-between">
                     <span className="text-gray-600">IVA ({invoice.iva_percentage || 16}%)</span>
                     <span className="font-medium text-gray-900">{formatCurrency(invoice.iva_amount)}</span>
@@ -681,7 +675,7 @@ Saludos cordiales.
                 {/* Customer Info */}
                 <div className="mb-6 p-3 bg-gray-50 border border-gray-300">
                   <p className="font-bold mb-2">CLIENTE:</p>
-                  <p className="text-xs">Nombre: {invoice.customer?.name || '-'}</p>
+                  <p className="text-xs">Nombre: {invoice.customer?.name || invoice.customer_name || '-'}</p>
                   <p className="text-xs">RIF/C.I: {invoice.customer?.tax_id || 'Pendiente'}</p>
                   <p className="text-xs">Dirección: {invoice.customer_address || invoice.customer?.address || '-'}</p>
                   <p className="text-xs">Teléfono: {invoice.customer_phone || invoice.customer?.phone || '-'}</p>
@@ -740,19 +734,19 @@ Saludos cordiales.
                 {/* Totals */}
                 <div className="grid grid-cols-2 gap-6 text-xs">
                   <div className="space-y-2">
-                    {invoice.taxable_base > 0 && (
+                    {(invoice.taxable_base || 0) > 0 && (
                       <div className="flex justify-between border-b border-gray-300 pb-1">
                         <span>Base Imponible:</span>
                         <span className="font-bold">{formatCurrency(invoice.taxable_base)}</span>
                       </div>
                     )}
-                    {invoice.exempt_amount > 0 && (
+                    {(invoice.exempt_amount || 0) > 0 && (
                       <div className="flex justify-between border-b border-gray-300 pb-1 text-green-700">
                         <span>Monto Exento:</span>
                         <span className="font-bold">{formatCurrency(invoice.exempt_amount)}</span>
                       </div>
                     )}
-                    {invoice.iva_amount > 0 && (
+                    {(invoice.iva_amount || 0) > 0 && (
                       <div className="flex justify-between border-b border-gray-300 pb-1">
                         <span>IVA ({invoice.iva_percentage || 16}%):</span>
                         <span className="font-bold">{formatCurrency(invoice.iva_amount)}</span>

@@ -170,6 +170,8 @@ const PurchaseDetailPage = ({ params }: PurchaseDetailPageProps) => {
   };
 
   const handleDownloadPDF = async () => {
+    if (!purchase) return;
+
     try {
       // Create a simple text representation for download
       const content = `

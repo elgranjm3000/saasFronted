@@ -8,7 +8,7 @@ export interface Invoice {
   control_number?: string; // Número de Control SENIAT
   date: string; // YYYY-MM-DD
   total_amount: number;
-  status: 'presupuesto' | 'factura' | 'pendiente' | 'pagada' | 'vencida' | 'cancelada';
+  status?: 'presupuesto' | 'factura' | 'pendiente' | 'pagada' | 'vencida' | 'cancelada';
   discount: number;
   notes?: string;
 
@@ -37,6 +37,7 @@ export interface Invoice {
   // Cliente
   customer_phone?: string;
   customer_address?: string;
+  customer_name?: string; // Nombre del cliente
 
   // Items
   items?: InvoiceItem[];
