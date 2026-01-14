@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
-import { 
+import {
   ArrowLeft,
   Save,
   Users,
@@ -18,6 +18,8 @@ import {
 import { customersAPI } from '@/lib/api';
 import { extractErrorMessage } from '@/lib/errorHandler';
 import { Customer } from '@/types/customer';
+import { GooglePlacesAutocomplete } from '@/components/GooglePlacesAutocomplete';
+import { GoogleMapView } from '@/components/GoogleMapView';
 
 interface CustomerFormData {
   name: string;
@@ -25,6 +27,10 @@ interface CustomerFormData {
   phone: string;
   address: string;
   tax_id: string;
+  location?: {
+    lat: number;
+    lng: number;
+  };
 }
 
 const CustomerFormPage = () => {
@@ -33,7 +39,8 @@ const CustomerFormPage = () => {
     email: '',
     phone: '',
     address: '',
-    tax_id: ''
+    tax_id: '',
+    location: undefined
   });
   
   const [loading, setLoading] = useState(false);
@@ -94,6 +101,14 @@ const CustomerFormPage = () => {
         [name]: ''
       }));
     }
+  };
+
+  const handleAddressChange = (address: string, location?: { lat: number; lng: number }) => {
+    setFormData(prev => ({
+      ...prev,
+      address,
+      location
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -300,23 +315,37 @@ const CustomerFormPage = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Dirección
-                  </label>
-                  <div className="relative">
-                    <MapPin className="absolute left-4 top-4 text-gray-400 w-4 h-4" />
-                    <textarea
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      rows={3}
-                      className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none resize-none"
-                      placeholder="Dirección completa del cliente..."
-                    />
-                  </div>
+                  <GooglePlacesAutocomplete
+                    value={formData.address}
+                    onChange={handleAddressChange}
+                    label="Dirección"
+                    placeholder="Buscar dirección en Google Maps..."
+                  />
                 </div>
               </div>
             </div>
+
+            {/* Map */}
+            {formData.location && (
+              <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
+                <div className="p-6 border-b border-gray-100">
+                  <h3 className="text-xl font-light text-gray-900">Ubicación en Mapa</h3>
+                </div>
+                <div className="p-6">
+                  <GoogleMapView
+                    lat={formData.location.lat}
+                    lng={formData.location.lng}
+                    address={formData.address}
+                    onLocationChange={(lat, lng) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        location: { lat, lng }
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Form Actions */}
             <div className="flex items-center justify-end space-x-4">
