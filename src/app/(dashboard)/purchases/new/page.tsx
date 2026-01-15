@@ -28,6 +28,8 @@ interface PurchaseItem {
   product_name: string;
   quantity: number;
   price_per_unit: number;
+  tax_rate?: number;
+  is_exempt?: boolean;
 }
 
 interface PurchaseFormData {
@@ -37,6 +39,18 @@ interface PurchaseFormData {
   expected_delivery_date: string;
   items: PurchaseItem[];
   notes: string;
+  // ✅ VENEZUELA: SENIAT fiscal fields
+  invoice_number?: string;
+  control_number?: string;
+  transaction_type?: 'contado' | 'credito';
+  payment_method?: string;
+  credit_days?: number;
+  iva_percentage?: number;
+  iva_retention_percentage?: number;
+  islr_retention_percentage?: number;
+  stamp_tax?: number;
+  supplier_phone?: string;
+  supplier_address?: string;
 }
 
 interface Supplier {
@@ -67,7 +81,14 @@ const NewPurchasePage = () => {
     date: new Date().toISOString().split('T')[0],
     expected_delivery_date: '',
     items: [],
-    notes: ''
+    notes: '',
+    // ✅ VENEZUELA: Default SENIAT values
+    transaction_type: 'contado',
+    payment_method: 'transferencia',
+    iva_percentage: 16,
+    iva_retention_percentage: 0,
+    islr_retention_percentage: 0,
+    stamp_tax: 0
   });
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -183,7 +204,9 @@ const NewPurchasePage = () => {
       product_id: product.id,
       product_name: product.name,
       quantity: 1,
-      price_per_unit: product.price || 0 // Use product's base price as default
+      price_per_unit: product.price || 0, // Use product's base price as default
+      tax_rate: formData.iva_percentage || 16, // Default IVA
+      is_exempt: false // Default to taxable
     };
     setFormData(prev => ({
       ...prev,
@@ -213,15 +236,40 @@ const NewPurchasePage = () => {
   };
 
   const calculateTotals = () => {
-    let total = 0;
+    let subtotal = 0;
+    let taxableBase = 0;
+    let exemptAmount = 0;
+    let ivaAmount = 0;
 
     formData.items.forEach(item => {
-      const itemTotal = item.quantity * item.price_per_unit;
-      total += itemTotal;
+      const itemSubtotal = item.quantity * item.price_per_unit;
+      subtotal += itemSubtotal;
+
+      if (item.is_exempt) {
+        exemptAmount += itemSubtotal;
+      } else {
+        taxableBase += itemSubtotal;
+        const itemIva = itemSubtotal * (item.tax_rate || formData.iva_percentage || 16) / 100;
+        ivaAmount += itemIva;
+      }
     });
 
+    // Calculate retentions
+    const ivaRetention = taxableBase * (formData.iva_retention_percentage || 0) / 100;
+    const islrRetention = taxableBase * (formData.islr_retention_percentage || 0) / 100;
+    const stampTax = formData.stamp_tax || 0;
+
+    const totalWithTaxes = subtotal + ivaAmount + stampTax - ivaRetention - islrRetention;
+
     return {
-      total,
+      subtotal,
+      taxableBase,
+      exemptAmount,
+      ivaAmount,
+      ivaRetention,
+      islrRetention,
+      stampTax,
+      total: totalWithTaxes,
       itemCount: formData.items.length
     };
   };
@@ -310,6 +358,8 @@ const NewPurchasePage = () => {
     try {
       setLoading(true);
 
+      const totals = calculateTotals();
+
       const submitData: any = {
         supplier_id: Number(formData.supplier_id),
         warehouse_id: Number(formData.warehouse_id),
@@ -318,8 +368,29 @@ const NewPurchasePage = () => {
         items: formData.items.map(item => ({
           product_id: Number(item.product_id),
           quantity: Number(item.quantity),
-          price_per_unit: Number(item.price_per_unit)
-        }))
+          price_per_unit: Number(item.price_per_unit),
+          tax_rate: item.is_exempt ? 0 : (item.tax_rate || formData.iva_percentage || 16),
+          is_exempt: item.is_exempt || false
+        })),
+        // ✅ VENEZUELA: SENIAT fields
+        invoice_number: formData.invoice_number || null,
+        control_number: formData.control_number || null,
+        transaction_type: formData.transaction_type || 'contado',
+        payment_method: formData.payment_method || 'transferencia',
+        credit_days: formData.transaction_type === 'credito' ? (formData.credit_days || 30) : null,
+        iva_percentage: formData.iva_percentage || 16,
+        iva_amount: totals.ivaAmount,
+        taxable_base: totals.taxableBase,
+        exempt_amount: totals.exemptAmount,
+        iva_retention: totals.ivaRetention,
+        iva_retention_percentage: formData.iva_retention_percentage || 0,
+        islr_retention: totals.islrRetention,
+        islr_retention_percentage: formData.islr_retention_percentage || 0,
+        stamp_tax: totals.stampTax,
+        subtotal: totals.subtotal,
+        total_with_taxes: totals.total,
+        supplier_phone: formData.supplier_phone || null,
+        supplier_address: formData.supplier_address || null
       };
 
       // Agregar expected_delivery_date y notes solo si tienen valores
@@ -569,6 +640,190 @@ const NewPurchasePage = () => {
                 </div>
               </div>
 
+              {/* ✅ VENEZUELA: SENIAT Fiscal Information Card */}
+              <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6">
+                <h2 className="text-lg font-medium text-gray-900 mb-6">Información Fiscal (SENIAT)</h2>
+
+                <div className="space-y-4">
+                  {/* Invoice and Control Numbers */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número de Factura
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.invoice_number || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, invoice_number: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                        placeholder="Ej: 001-000123"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número de Control
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.control_number || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, control_number: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                        placeholder="Ej: 123456789"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Transaction Type and Payment Method */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tipo de Transacción
+                      </label>
+                      <select
+                        value={formData.transaction_type || 'contado'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, transaction_type: e.target.value as any }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      >
+                        <option value="contado">Contado</option>
+                        <option value="credito">Crédito</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Forma de Pago
+                      </label>
+                      <select
+                        value={formData.payment_method || 'transferencia'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, payment_method: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      >
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="cheque">Cheque</option>
+                        <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+                        <option value="deposito">Depósito</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Credit Days (only for credit transactions) */}
+                  {formData.transaction_type === 'credito' && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Días de Crédito
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.credit_days || 30}
+                        onChange={(e) => setFormData(prev => ({ ...prev, credit_days: parseInt(e.target.value) || 30 }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Tax Percentages */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        % IVA
+                      </label>
+                      <select
+                        value={formData.iva_percentage || 16}
+                        onChange={(e) => {
+                          const newIva = parseFloat(e.target.value);
+                          setFormData(prev => ({ ...prev, iva_percentage: newIva }));
+                          // Update all non-exempt items with new IVA rate
+                          setFormData(prev => ({
+                            ...prev,
+                            items: prev.items.map(item => ({
+                              ...item,
+                              tax_rate: item.is_exempt ? 0 : newIva
+                            }))
+                          }));
+                        }}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      >
+                        <option value="0">0% (Exento)</option>
+                        <option value="8">8%</option>
+                        <option value="16">16%</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        % Retención IVA
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={formData.iva_retention_percentage || 0}
+                        onChange={(e) => setFormData(prev => ({ ...prev, iva_retention_percentage: parseFloat(e.target.value) || 0 }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        % Retención ISLR
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={formData.islr_retention_percentage || 0}
+                        onChange={(e) => setFormData(prev => ({ ...prev, islr_retention_percentage: parseFloat(e.target.value) || 0 }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Stamp Tax */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Timado Fiscal (Bs)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.stamp_tax || 0}
+                      onChange={(e) => setFormData(prev => ({ ...prev, stamp_tax: parseFloat(e.target.value) || 0 }))}
+                      className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                    />
+                  </div>
+
+                  {/* Supplier Contact Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Teléfono Proveedor
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.supplier_phone || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, supplier_phone: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                        placeholder="Ej: 0212-1234567"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Dirección Proveedor
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.supplier_address || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, supplier_address: e.target.value }))}
+                        className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
+                        placeholder="Dirección fiscal del proveedor"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Products Card */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-6">
@@ -670,6 +925,19 @@ const NewPurchasePage = () => {
                           <div className="md:col-span-2">
                             <label className="block text-xs font-medium text-gray-500 mb-1">Producto</label>
                             <p className="font-medium text-gray-900">{item.product_name}</p>
+                            {/* ✅ VENEZUELA: Exempt toggle */}
+                            <div className="mt-2 flex items-center">
+                              <input
+                                type="checkbox"
+                                id={`exempt_${index}`}
+                                checked={item.is_exempt || false}
+                                onChange={(e) => updateItem(index, 'is_exempt', e.target.checked)}
+                                className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                              />
+                              <label htmlFor={`exempt_${index}`} className="ml-2 text-xs text-gray-600">
+                                Exento de IVA
+                              </label>
+                            </div>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Cantidad</label>
@@ -700,8 +968,15 @@ const NewPurchasePage = () => {
                           </div>
                         </div>
                         <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200">
-                          <div className="text-sm font-medium text-gray-900">
-                            Subtotal: {formatCurrency(item.quantity * item.price_per_unit)}
+                          <div className="text-sm">
+                            <span className="font-medium text-gray-900">
+                              Subtotal: {formatCurrency(item.quantity * item.price_per_unit)}
+                            </span>
+                            {!item.is_exempt && (
+                              <span className="ml-3 text-xs text-gray-500">
+                                + IVA ({item.tax_rate || formData.iva_percentage || 16}%): {formatCurrency(item.quantity * item.price_per_unit * (item.tax_rate || formData.iva_percentage || 16) / 100)}
+                              </span>
+                            )}
                           </div>
                           <button
                             type="button"
@@ -727,12 +1002,46 @@ const NewPurchasePage = () => {
             <div className="space-y-6">
               {/* Summary Card */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen Fiscal</h3>
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-gray-600">Productos</span>
                     <span className="font-medium text-gray-900">{totals.itemCount}</span>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(totals.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Base Imponible</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(totals.taxableBase)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Exento</span>
+                    <span className="font-medium text-gray-900">{formatCurrency(totals.exemptAmount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">IVA</span>
+                    <span className="font-medium text-blue-600">{formatCurrency(totals.ivaAmount)}</span>
+                  </div>
+                  {totals.ivaRetention > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ret. IVA</span>
+                      <span className="font-medium text-red-600">-{formatCurrency(totals.ivaRetention)}</span>
+                    </div>
+                  )}
+                  {totals.islrRetention > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Ret. ISLR</span>
+                      <span className="font-medium text-red-600">-{formatCurrency(totals.islrRetention)}</span>
+                    </div>
+                  )}
+                  {totals.stampTax > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Timado Fiscal</span>
+                      <span className="font-medium text-gray-900">{formatCurrency(totals.stampTax)}</span>
+                    </div>
+                  )}
                   <div className="border-t border-gray-200 pt-3">
                     <div className="flex justify-between">
                       <span className="text-gray-900 font-medium">Total</span>

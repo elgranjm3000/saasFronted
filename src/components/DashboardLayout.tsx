@@ -19,6 +19,9 @@ import {
   Building2,
   Home,
   FolderTree,
+  DollarSign,
+  Ruler,
+  Receipt,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 
@@ -37,12 +40,15 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
     { icon: FolderTree, label: 'Categorias', href: '/categories', active: pathname.startsWith('/categories') },
     { icon: Warehouse, label: 'Almacenes', href: '/warehouses', active: pathname.startsWith('/warehouses') },
-    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },    
+    { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },
     { icon: Users, label: 'Clientes', href: '/customers', active: pathname.startsWith('/customers') },
     { icon: FileText, label: 'Facturas', href: '/invoices', active: pathname.startsWith('/invoices') },
     { icon: Truck, label: 'Proveedores', href: '/suppliers', active: pathname.startsWith('/suppliers') },
-    { icon: ShoppingCart, label: 'Compras', href: '/purchases', active: pathname.startsWith('/purchases') },            
+    { icon: ShoppingCart, label: 'Compras', href: '/purchases', active: pathname.startsWith('/purchases') },
+    { icon: DollarSign, label: 'Monedas', href: '/currencies', active: pathname.startsWith('/currencies') },
+    { icon: Ruler, label: 'Unidades', href: '/units', active: pathname.startsWith('/units') },
     { icon: BarChart3, label: 'Reportes', href: '/reports', active: pathname.startsWith('/reports') },
+    { icon: Receipt, label: 'Reportes SENIAT', href: '/fiscal-reports', active: pathname.startsWith('/fiscal-reports') },
     { icon: Settings, label: 'Configuración', href: '/settings', active: pathname.startsWith('/settings') },
   ];
 

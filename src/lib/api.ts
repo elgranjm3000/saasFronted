@@ -212,16 +212,16 @@ export const budgetsAPI = {
 export const purchasesAPI = {
   getAll: (params?: { skip?: number; limit?: number; status?: string }) =>
     apiClient.get('/purchases', { params }),
-  
+
   getById: (id: number) =>
     apiClient.get(`/purchases/${id}`),
-  
+
   create: (data: any) =>
     apiClient.post('/purchases', data),
-  
+
   update: (id: number, data: any) =>
     apiClient.put(`/purchases/${id}`, data),
-  
+
   delete: (id: number) =>
     apiClient.delete(`/purchases/${id}`),
 
@@ -233,6 +233,13 @@ export const purchasesAPI = {
 
   getPending: () =>
     apiClient.get('/purchases/pending'),
+
+  // ✅ NOTAS DE CRÉDITO DE COMPRAS
+  createCreditNote: (purchaseId: number, data: any) =>
+    apiClient.post(`/purchases/${purchaseId}/credit-movements`, data),
+
+  getCreditNotes: (params?: { skip?: number; limit?: number }) =>
+    apiClient.get('/purchases/credit-movements', { params }),
 };
 
 // =============================================
@@ -434,6 +441,80 @@ export const categoriesAPI = {
 
   delete: (id: number) =>
     apiClient.delete(`/categories/${id}`),
+};
+
+// =============================================
+// 💰 CURRENCIES API (MONEDAS)
+// =============================================
+export const currenciesAPI = {
+  getAll: (params?: { skip?: number; limit?: number; active_only?: boolean }) =>
+    apiClient.get('/currencies', { params }),
+
+  getById: (id: number) =>
+    apiClient.get(`/currencies/${id}`),
+
+  create: (data: any) =>
+    apiClient.post('/currencies', data),
+
+  update: (id: number, data: any) =>
+    apiClient.put(`/currencies/${id}`, data),
+
+  delete: (id: number) =>
+    apiClient.delete(`/currencies/${id}`),
+};
+
+// =============================================
+// 📏 UNITS API (UNIDADES DE MEDIDA)
+// =============================================
+export const unitsAPI = {
+  getAll: (params?: { skip?: number; limit?: number; active_only?: boolean }) =>
+    apiClient.get('/units', { params }),
+
+  getById: (id: number) =>
+    apiClient.get(`/units/${id}`),
+
+  create: (data: any) =>
+    apiClient.post('/units', data),
+
+  update: (id: number, data: any) =>
+    apiClient.put(`/units/${id}`, data),
+
+  delete: (id: number) =>
+    apiClient.delete(`/units/${id}`),
+};
+
+// =============================================
+// 📊 REPORTS API (LIBRO DE VENTAS/COMPRAS SENIAT)
+// =============================================
+export const reportsAPI = {
+  // Libro de Ventas
+  getSalesBook: (params: { start_date: string; end_date: string; invoice_type?: string }) =>
+    apiClient.get('/reports/sales-book', { params }),
+
+  // Libro de Compras
+  getPurchaseBook: (params: { start_date: string; end_date: string; purchase_type?: string }) =>
+    apiClient.get('/reports/purchase-book', { params }),
+
+  // Relación de Ventas (Resumen Gerencial)
+  getSalesSummary: (params: { start_date: string; end_date: string; group_by?: string }) =>
+    apiClient.get('/reports/sales-summary', { params }),
+
+  // Flujo de Caja por Forma de Pago
+  getCashFlow: (params: { start_date: string; end_date: string }) =>
+    apiClient.get('/reports/cash-flow', { params }),
+};
+
+// =============================================
+// 📄 PURCHASE CREDIT NOTES API (NOTAS DE CRÉDITO DE COMPRAS)
+// =============================================
+export const purchaseCreditNotesAPI = {
+  // Crear nota de crédito para una compra
+  create: (purchaseId: number, data: any) =>
+    apiClient.post(`/purchases/${purchaseId}/credit-movements`, data),
+
+  // Listar todas las notas de crédito de compras
+  getAll: (params?: { skip?: number; limit?: number }) =>
+    apiClient.get('/purchases/credit-movements', { params }),
 };
 
 // =============================================
