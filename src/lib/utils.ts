@@ -204,3 +204,110 @@ export const debounce = <T extends (...args: any[]) => any>(
     timeout = setTimeout(() => func.apply(null, args), wait);
   };
 };
+
+// =============================================
+// ✅ MONEDA: Funciones de conversión y formateo
+// =============================================
+
+export interface Currency {
+  id: number;
+  code: string;
+  name: string;
+  symbol: string;
+  exchange_rate: number;
+  is_base_currency: boolean;
+}
+
+/**
+ * Convertir un monto de una moneda a otra
+ * @param amount Monto a convertir
+ * @param fromCurrency Moneda origen
+ * @param toCurrency Moneda destino
+ * @returns Monto convertido
+ */
+export const convertCurrency = (
+  amount: number,
+  fromCurrency: Currency,
+  toCurrency: Currency
+): number => {
+  // Si es la misma moneda, retornar el mismo monto
+  if (fromCurrency.id === toCurrency.id) {
+    return amount;
+  }
+
+  // Convertir a moneda base primero
+  let amountInBase: number;
+  if (fromCurrency.is_base_currency) {
+    amountInBase = amount;
+  } else {
+    amountInBase = amount / fromCurrency.exchange_rate;
+  }
+
+  // Luego convertir de base a moneda destino
+  if (toCurrency.is_base_currency) {
+    return amountInBase;
+  } else {
+    return amountInBase * toCurrency.exchange_rate;
+  }
+};
+
+/**
+ * Formatear un monto con el símbolo de moneda
+ * @param amount Monto a formatear
+ * @param currency Moneda (opcional)
+ * @returns String formateado con símbolo de moneda
+ */
+export const formatCurrencyWithSymbol = (
+  amount: number,
+  currency?: Currency
+): string => {
+  if (!currency) {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  try {
+    return new Intl.NumberFormat('es-VE', {
+      style: 'currency',
+      currency: currency.code,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch (error) {
+    // Fallback si el código de moneda no es válido para Intl
+    return `${currency.symbol} ${amount.toLocaleString('es-VE', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  }
+};
+
+/**
+ * Mostrar precio en múltiples monedas
+ * @param amount Monto base
+ * @param baseCurrency Moneda del monto base
+ * @param availableCurrencies Lista de monedas disponibles
+ * @returns Objeto con montos en cada moneda
+ */
+export const getPricesInCurrencies = (
+  amount: number,
+  baseCurrency: Currency,
+  availableCurrencies: Currency[]
+): Record<string, { amount: number; formatted: string }> => {
+  const prices: Record<string, { amount: number; formatted: string }> = {};
+
+  availableCurrencies.forEach(currency => {
+    const convertedAmount = convertCurrency(amount, baseCurrency, currency);
+    prices[currency.code] = {
+      amount: convertedAmount,
+      formatted: formatCurrencyWithSymbol(convertedAmount, currency)
+    };
+  });
+
+  return prices;
+};
+

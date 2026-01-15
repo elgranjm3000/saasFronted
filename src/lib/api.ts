@@ -461,6 +461,12 @@ export const currenciesAPI = {
 
   delete: (id: number) =>
     apiClient.delete(`/currencies/${id}`),
+
+  // ✅ MONEDA: Convertir moneda
+  convert: (amount: number, from_currency_id: number, to_currency_id: number) =>
+    apiClient.get('/currencies/convert', {
+      params: { amount, from_currency_id, to_currency_id }
+    }),
 };
 
 // =============================================

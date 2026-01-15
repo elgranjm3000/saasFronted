@@ -11,6 +11,14 @@ export interface Product {
   stock_quantity?: number;
   min_stock?: number;
   is_active: boolean;
+  currency_id?: number;  // ✅ MONEDA: Moneda del precio
+  currency?: {            // ✅ MONEDA: Datos de la moneda
+    id: number;
+    code: string;
+    name: string;
+    symbol: string;
+    exchange_rate: number;
+  };
   category?: {
     id: number;
     name: string;
@@ -33,6 +41,7 @@ export interface ProductCreate {
   warehouse_id?: number;
   stock_quantity?: number;
   min_stock?: number;
+  currency_id?: number;  // ✅ MONEDA: Moneda del precio
 }
 
 export interface ProductUpdate {
@@ -46,6 +55,7 @@ export interface ProductUpdate {
   stock_quantity?: number;
   min_stock?: number;
   is_active?: boolean;
+  currency_id?: number;  // ✅ MONEDA: Moneda del precio
 }
 
 export interface ProductStats {

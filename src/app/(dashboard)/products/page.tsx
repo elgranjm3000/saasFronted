@@ -15,10 +15,11 @@ import {
   List,
   ArrowUpDown,
   Download,
-  Upload
+  Upload,
+  DollarSign
 } from 'lucide-react';
-import { productsAPI, categoriesAPI } from '@/lib/api';
-import { formatCurrency } from '@/lib/utils';
+import { productsAPI, categoriesAPI, currenciesAPI } from '@/lib/api';
+import { formatCurrency, convertCurrency, formatCurrencyWithSymbol } from '@/lib/utils';
 import { ListItemSkeleton } from '@/components/Skeleton';
 
 interface Product {
@@ -32,11 +33,21 @@ interface Product {
   quantity: number;
   description: string;
   company_id: number;
+  currency?: {  // ✅ MONEDA
+    id: number;
+    code: string;
+    name: string;
+    symbol: string;
+    exchange_rate: number;
+    is_base_currency: boolean;
+  };
 }
 
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [currencies, setCurrencies] = useState<any[]>([]);  // ✅ MONEDA
+  const [displayCurrencyId, setDisplayCurrencyId] = useState<number | null>(null);  // ✅ MONEDA
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
@@ -49,6 +60,7 @@ const ProductsPage = () => {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+    fetchCurrencies();  // ✅ MONEDA
   }, []);
 
   useEffect(() => {
@@ -92,6 +104,26 @@ const ProductsPage = () => {
     }
   };
 
+  // ✅ MONEDA: Obtener monedas disponibles
+  const fetchCurrencies = async () => {
+    try {
+      const response = await currenciesAPI.getAll({ active_only: true });
+      setCurrencies(response.data || []);
+
+      // Establecer moneda base por defecto si no hay ninguna seleccionada
+      if (!displayCurrencyId && response.data && response.data.length > 0) {
+        const baseCurrency = response.data.find((c: any) => c.is_base_currency);
+        if (baseCurrency) {
+          setDisplayCurrencyId(baseCurrency.id);
+        } else {
+          setDisplayCurrencyId(response.data[0].id);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching currencies:', error);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
       try {
@@ -108,6 +140,41 @@ const ProductsPage = () => {
     if (product.quantity === 0) return { status: 'out', color: 'text-red-600', bg: 'bg-red-100', label: 'Agotado' };
     if (product.quantity <= minStock) return { status: 'low', color: 'text-orange-600', bg: 'bg-orange-100', label: 'Stock Bajo' };
     return { status: 'good', color: 'text-green-600', bg: 'bg-green-100', label: 'En Stock' };
+  };
+
+  // ✅ MONEDA: Obtener precio convertido a la moneda de visualización
+  const getPriceInDisplayCurrency = (product: Product): { amount: number; formatted: string; originalCurrency?: string } => {
+    if (!product.currency || !displayCurrencyId) {
+      return {
+        amount: product.price,
+        formatted: formatCurrency(product.price)
+      };
+    }
+
+    const displayCurrency = currencies.find((c: any) => c.id === displayCurrencyId);
+    if (!displayCurrency) {
+      return {
+        amount: product.price,
+        formatted: formatCurrency(product.price)
+      };
+    }
+
+    // Si es la misma moneda, retornar el precio original
+    if (product.currency.id === displayCurrencyId) {
+      return {
+        amount: product.price,
+        formatted: formatCurrencyWithSymbol(product.price, displayCurrency),
+        originalCurrency: product.currency.code
+      };
+    }
+
+    // Convertir a la moneda de visualización
+    const convertedAmount = convertCurrency(product.price, product.currency, displayCurrency);
+    return {
+      amount: convertedAmount,
+      formatted: formatCurrencyWithSymbol(convertedAmount, displayCurrency),
+      originalCurrency: product.currency.code
+    };
   };
 
   const filteredProducts = products
@@ -175,7 +242,12 @@ const ProductsPage = () => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <p className="text-2xl font-light text-gray-900">
-              {formatCurrency(product.price)}
+              {getPriceInDisplayCurrency(product).formatted}
+              {getPriceInDisplayCurrency(product).originalCurrency && (
+                <span className="text-sm text-gray-400 ml-2">
+                  ({getPriceInDisplayCurrency(product).originalCurrency})
+                </span>
+              )}
             </p>
           </div>
           <div className="text-right">
@@ -220,6 +292,20 @@ const ProductsPage = () => {
               <Download className="w-4 h-4 mr-2" />
               <span className="font-light">Exportar</span>
             </button>
+            {/* ✅ MONEDA: Selector de moneda */}
+            {currencies.length > 0 && (
+              <select
+                value={displayCurrencyId || ''}
+                onChange={(e) => setDisplayCurrencyId(Number(e.target.value))}
+                className="flex items-center px-4 py-3 text-gray-600 bg-white/80 border border-gray-200/60 rounded-2xl hover:bg-white hover:border-gray-300 transition-all"
+              >
+                {currencies.map((currency: any) => (
+                  <option key={currency.id} value={currency.id}>
+                    {currency.symbol} {currency.code}
+                  </option>
+                ))}
+              </select>
+            )}
             <Link
               href="/products/new"
               className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
@@ -430,7 +516,12 @@ const ProductsPage = () => {
                         )}
                       </td>
                       <td className="py-4 px-6 font-medium text-gray-900">
-                        {formatCurrency(product.price)}
+                        {getPriceInDisplayCurrency(product).formatted}
+                        {getPriceInDisplayCurrency(product).originalCurrency && (
+                          <span className="text-xs text-gray-400 ml-1 block">
+                            {getPriceInDisplayCurrency(product).originalCurrency}
+                          </span>
+                        )}
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center">
