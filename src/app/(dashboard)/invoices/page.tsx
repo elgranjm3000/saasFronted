@@ -28,6 +28,9 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { ListItemSkeleton } from '@/components/Skeleton';
 import { Invoice as InvoiceType } from '@/types/invoice';
 import { Customer } from '@/types/customer';
+import { CurrencyBadge, CurrencyAmount } from '@/components/ui/CurrencyBadge';
+import { CurrencyConverterSelector } from '@/components/currencies/CurrencyConverterSelector';
+import { useCurrencyStore, getBaseCurrency } from '@/store/currency-store';
 
 interface Invoice extends InvoiceType {
   customer_name?: string;
@@ -41,10 +44,24 @@ const InvoicesPage = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [sortBy, setSortBy] = useState<'invoice_number' | 'date' | 'total_amount'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [baseCurrencyId, setBaseCurrencyId] = useState<number | null>(null);
+
+  const { currencies, fetchCurrencies } = useCurrencyStore();
 
   useEffect(() => {
     fetchInvoices();
+    fetchCurrencies({ is_active: true });
   }, []);
+
+  // Obtener moneda base cuando se cargan las monedas
+  useEffect(() => {
+    if (currencies.length > 0) {
+      const baseCurrency = getBaseCurrency({ currencies });
+      if (baseCurrency) {
+        setBaseCurrencyId(baseCurrency.id);
+      }
+    }
+  }, [currencies]);
 
   const fetchInvoices = async () => {
     try {
@@ -163,21 +180,20 @@ const InvoicesPage = () => {
     return (
       <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100 hover:shadow-xl hover:shadow-gray-500/10 transition-all duration-300 hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
-          <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center">
-            <FileText className="w-7 h-7 text-blue-600" />
+          <div className="flex-1">
+            <div className="flex items-center space-x-2 mb-2">
+              <h3 className="text-lg font-medium text-gray-900">
+                {invoice.invoice_number}
+              </h3>
+              <CurrencyBadge currencyId={invoice.currency_id || null} size="sm" />
+            </div>
+            <p className="text-sm text-gray-500">
+              {invoice.customer_name || `Cliente #${invoice.customer_id}`}
+            </p>
           </div>
           <button className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors opacity-0 group-hover:opacity-100">
             <MoreVertical className="w-4 h-4" />
           </button>
-        </div>
-
-        <div className="mb-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-1">
-            {invoice.invoice_number}
-          </h3>
-          <p className="text-sm text-gray-500">
-            {invoice.customer_name || `Cliente #${invoice.customer_id}`}
-          </p>
         </div>
 
         <div className="space-y-3 mb-4">
@@ -186,6 +202,15 @@ const InvoicesPage = () => {
               <Calendar className="w-4 h-4 mr-2" />
               {formatDate(invoice.date)}
             </span>
+            <span className={`inline-flex items-center px-2 py-1 rounded-lg text-xs font-medium ${
+              invoice.status === 'factura'
+                ? 'bg-blue-100 text-blue-700'
+                : invoice.status === 'pagada'
+                ? 'bg-green-100 text-green-700'
+                : 'bg-gray-100 text-gray-700'
+            }`}>
+              {invoice.status}
+            </span>
           </div>
           <div className="flex items-center justify-between">
             <span className="text-sm text-gray-500">Vencimiento</span>
@@ -193,11 +218,28 @@ const InvoicesPage = () => {
               {dueDate ? formatDate(dueDate) : '-'}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Total</span>
-            <span className="text-xl font-light text-gray-900">
-              {formatCurrency(invoice.total_amount)}
-            </span>
+
+          {/* IGTF Badge */}
+          {invoice.igtf_amount && invoice.igtf_amount > 0 && (
+            <div className="flex items-center justify-between p-2 bg-orange-50 rounded-xl">
+              <span className="text-xs text-orange-700 font-medium">IGTF</span>
+              <CurrencyAmount
+                amount={invoice.igtf_amount}
+                currencyId={invoice.currency_id || null}
+                showConverted={false}
+                className="text-sm font-semibold text-orange-900"
+              />
+            </div>
+          )}
+
+          <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+            <span className="text-sm font-medium text-gray-700">Total</span>
+            <CurrencyAmount
+              amount={invoice.total_amount}
+              currencyId={invoice.currency_id || null}
+              showConverted={true}
+              className="text-xl font-light text-gray-900"
+            />
           </div>
         </div>
 
@@ -256,13 +298,6 @@ const InvoicesPage = () => {
               <Download className="w-4 h-4 mr-2" />
               <span className="font-light">Exportar</span>
             </button>
-            <Link
-              href="/invoices/new"
-              className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="font-light">Nueva Factura</span>
-            </Link>
           </div>
         </div>
 
@@ -288,7 +323,16 @@ const InvoicesPage = () => {
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
                   Monto Total
                 </p>
-                <p className="text-2xl font-light text-gray-900">{formatCurrency(stats.totalAmount)}</p>
+                {baseCurrencyId ? (
+                  <CurrencyAmount
+                    amount={stats.totalAmount}
+                    currencyId={baseCurrencyId}
+                    showConverted={false}
+                    className="text-2xl font-light text-gray-900"
+                  />
+                ) : (
+                  <p className="text-2xl font-light text-gray-900">{formatCurrency(stats.totalAmount)}</p>
+                )}
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-green-600" />
@@ -339,6 +383,22 @@ const InvoicesPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Currency Converter - Convertir monto total a diferentes monedas */}
+      {stats.totalAmount > 0 && baseCurrencyId && (
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6 mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <DollarSign className="w-5 h-5 text-green-600" />
+            <h3 className="text-lg font-medium text-gray-900">Convertir Monto Total</h3>
+          </div>
+          <CurrencyConverterSelector
+            amount={stats.totalAmount}
+            fromCurrencyId={baseCurrencyId}
+            label="Ver total en"
+            showConversionDetails={true}
+          />
+        </div>
+      )}
 
       {/* Search and Filters */}
       <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6 mb-8">
@@ -446,7 +506,11 @@ const InvoicesPage = () => {
                         </div>
                       </td>
                       <td className="py-4 px-6 font-medium text-gray-900">
-                        {formatCurrency(invoice.total_amount || 0)}
+                        <CurrencyAmount
+                          amount={invoice.total_amount || 0}
+                          currencyId={invoice.currency_id || null}
+                          showConverted={false}
+                        />
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center space-x-2">
@@ -511,11 +575,11 @@ const InvoicesPage = () => {
             {searchTerm ? 'No se encontraron facturas con ese término de búsqueda.' : 'Comienza creando tu primera factura.'}
           </p>
           <Link
-            href="/invoices/new"
-            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
+            href="/invoices/pos"
+            className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl hover:from-green-600 hover:to-green-700 transition-all transform hover:scale-[1.02] shadow-lg"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            <span className="font-light">Nueva Factura</span>
+            <DollarSign className="w-4 h-4 mr-2" />
+            <span className="font-light">POS</span>
           </Link>
         </div>
       )}

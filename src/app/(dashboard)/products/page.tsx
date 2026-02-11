@@ -21,18 +21,62 @@ import {
 import { productsAPI, categoriesAPI, currenciesAPI } from '@/lib/api';
 import { formatCurrency, convertCurrency, formatCurrencyWithSymbol } from '@/lib/utils';
 import { ListItemSkeleton } from '@/components/Skeleton';
+import { useCurrencyStore } from '@/store/currency-store';
 
 interface Product {
   id: number;
   name: string;
   sku: string;
-  category?: {
-    name: string;
-  };
-  price: number;
-  quantity: number;
+  short_name?: string;  // ✅ SISTEMA ESCRITORIO: Nombre corto
   description: string;
   company_id: number;
+
+  // ✅ SISTEMA ESCRITORIO: Clasificación
+  mark?: string;  // Marca
+  model?: string;  // Modelo
+  size?: string;  // Talla
+  color?: string;  // Color
+  product_type?: string;  // T=Terminado, S=Servicio, C=Compuesto
+
+  category?: {
+    id: number;
+    name: string;
+  };
+  department?: {  // ✅ SISTEMA ESCRITORIO
+    id: number;
+    name: string;
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Impuestos
+  sale_tax_code?: string;  // 01=16%, 02=8%, 03=31%, 06=Percibido, EX=Exento
+
+  // Precios
+  price: number;  // Precio local (VES)
+  price_usd?: number;  // ✅ SISTEMA REF: Precio de referencia en USD
+  cost?: number;  // ✅ SISTEMA REF: Costo del producto
+
+  // ✅ SISTEMA ESCRITORIO: Precios múltiples (4 niveles)
+  maximum_price?: number;  // Precio máximo
+  offer_price?: number;  // Precio oferta
+  higher_price?: number;  // Precio mayor
+  minimum_price?: number;  // Precio mínimo
+  sale_price_type?: number;  // 0=Max, 1=Oferta, 2=Mayor, 3=Min, 4=Variable
+
+  // Stock
+  quantity: number;  // Stock actual
+  stock_quantity?: number;  // ✅ Alternativo
+  min_stock?: number;  // Stock mínimo
+  maximum_stock?: number;  // ✅ Stock máximo
+
+  // ✅ SISTEMA ESCRITORIO: Configuración de stock
+  allow_negative_stock?: boolean;  // Permitir vender sin stock
+  serialized?: boolean;  // Usa serial
+  use_lots?: boolean;  // Usa lotes
+
+  // ✅ SISTEMA ESCRITORIO: Estado
+  status?: string;  // 01=Activo, 02=Inactivo
+  is_active?: boolean;
+
   currency?: {  // ✅ MONEDA
     id: number;
     code: string;
@@ -41,12 +85,14 @@ interface Product {
     exchange_rate: number;
     is_base_currency: boolean;
   };
+
+  // ✅ SISTEMA ESCRITORIO: Moneda principal del producto
+  coin?: string;  // 01=Bolívar, 02=Dólar
 }
 
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [currencies, setCurrencies] = useState<any[]>([]);  // ✅ MONEDA
   const [displayCurrencyId, setDisplayCurrencyId] = useState<number | null>(null);  // ✅ MONEDA
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -57,10 +103,23 @@ const ProductsPage = () => {
   const [sortBy, setSortBy] = useState<'name' | 'price' | 'quantity'>('name');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
+  // ✅ MONEDA: Usar el store de monedas
+  const { currencies, fetchCurrencies } = useCurrencyStore();
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-    fetchCurrencies();  // ✅ MONEDA
+    fetchCurrencies({ is_active: true }).then(() => {
+      // ✅ MONEDA: Establecer moneda base por defecto si no hay ninguna seleccionada
+      if (!displayCurrencyId && currencies && currencies.length > 0) {
+        const baseCurrency = currencies.find((c: any) => c.is_base_currency);
+        if (baseCurrency) {
+          setDisplayCurrencyId(baseCurrency.id);
+        } else {
+          setDisplayCurrencyId(currencies[0].id);
+        }
+      }
+    });  // ✅ MONEDA: Cargar monedas activas
   }, []);
 
   useEffect(() => {
@@ -105,25 +164,6 @@ const ProductsPage = () => {
   };
 
   // ✅ MONEDA: Obtener monedas disponibles
-  const fetchCurrencies = async () => {
-    try {
-      const response = await currenciesAPI.getAll({ active_only: true });
-      setCurrencies(response.data || []);
-
-      // Establecer moneda base por defecto si no hay ninguna seleccionada
-      if (!displayCurrencyId && response.data && response.data.length > 0) {
-        const baseCurrency = response.data.find((c: any) => c.is_base_currency);
-        if (baseCurrency) {
-          setDisplayCurrencyId(baseCurrency.id);
-        } else {
-          setDisplayCurrencyId(response.data[0].id);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching currencies:', error);
-    }
-  };
-
   const handleDelete = async (id: number) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este producto?')) {
       try {
@@ -136,10 +176,159 @@ const ProductsPage = () => {
   };
 
   const getStockStatus = (product: Product) => {
-    const minStock = 10;
-    if (product.quantity === 0) return { status: 'out', color: 'text-red-600', bg: 'bg-red-100', label: 'Agotado' };
-    if (product.quantity <= minStock) return { status: 'low', color: 'text-orange-600', bg: 'bg-orange-100', label: 'Stock Bajo' };
+    const minStock = product.min_stock || 10;
+    const quantity = product.stock_quantity || product.quantity;
+
+    if (quantity === 0 && !product.allow_negative_stock) return { status: 'out', color: 'text-red-600', bg: 'bg-red-100', label: 'Agotado' };
+    if (quantity <= minStock) return { status: 'low', color: 'text-orange-600', bg: 'bg-orange-100', label: 'Stock Bajo' };
     return { status: 'good', color: 'text-green-600', bg: 'bg-green-100', label: 'En Stock' };
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener etiqueta de código de impuesto
+  const getTaxCodeLabel = (code?: string) => {
+    const taxCodes: Record<string, string> = {
+      '01': '16% General',
+      '02': '8% Reducido',
+      '03': '31% Aumentado',
+      '06': 'Percibido',
+      'EX': 'Exento',
+    };
+    return taxCodes[code || '01'] || code || '01';
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener etiqueta de tipo de producto
+  const getProductTypeLabel = (type?: string) => {
+    const types: Record<string, string> = {
+      'T': 'Terminado',
+      'S': 'Servicio',
+      'C': 'Compuesto',
+    };
+    return types[type || 'T'] || 'Terminado';
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener etiqueta de tipo de precio
+  const getPriceTypeLabel = (type?: number) => {
+    const types: Record<number, string> = {
+      0: 'Máximo',
+      1: 'Oferta',
+      2: 'Mayor',
+      3: 'Mínimo',
+      4: 'Variable',
+    };
+    return types[type || 0] || 'Máximo';
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener estado del producto
+  const getProductStatus = (product: Product) => {
+    if (product.status === '02' || product.is_active === false) {
+      return { color: 'text-red-600', bg: 'bg-red-100', label: 'Inactivo' };
+    }
+    return { color: 'text-green-600', bg: 'bg-green-100', label: 'Activo' };
+  };
+
+  // ✅ MONEDA: Obtener moneda del producto (basado en currency_id, coin o moneda base)
+  const getProductCurrency = (product: Product) => {
+    // Si tiene objeto currency, usarlo
+    if (product.currency) {
+      return product.currency;
+    }
+
+    // Obtener moneda base actual del sistema desde el store
+    const baseCurrency = currencies.find((c: any) => c.is_base_currency);
+
+    // Si no tiene currency_id, usar la moneda base del sistema
+    if (baseCurrency) {
+      return {
+        code: baseCurrency.code,
+        name: baseCurrency.name,
+        symbol: baseCurrency.symbol,
+        exchange_rate: baseCurrency.exchange_rate,
+      };
+    }
+
+    // Fallback: derivar del campo coin si no hay moneda base configurada
+    const coinCode = product.coin || '01';
+    if (coinCode === '01') {
+      return {
+        code: 'VES',
+        name: 'Bolívar',
+        symbol: 'Bs.',
+        exchange_rate: 1.0,
+      };
+    } else if (coinCode === '02') {
+      return {
+        code: 'USD',
+        name: 'Dólar',
+        symbol: '$',
+        exchange_rate: 344.5,
+      };
+    }
+
+    // Default a VES
+    return {
+      code: 'VES',
+      name: 'Bolívar',
+      symbol: 'Bs.',
+      exchange_rate: 1.0,
+    };
+  };
+
+  // ✅ MONEDA: Obtener precio del producto convertido a moneda base
+  const getProductPrice = (product: Product, baseCurrency: any) => {
+    // El precio de referencia (price_usd) está en USD y es el precio base para conversiones
+    const priceRef = product.price_usd || 0;
+
+    // Si no hay precio de referencia, usar el precio local según coin
+    if (priceRef === 0) {
+      const priceInCoin = product.price || 0;
+      return {
+        amount: priceInCoin,
+        ref: 0
+      };
+    }
+
+    // Si no hay moneda base configurada, mostrar el precio local
+    if (!baseCurrency || !baseCurrency.code) {
+      return {
+        amount: product.price || priceRef,
+        ref: priceRef
+      };
+    }
+
+    // Convertir el precio de referencia (en USD) a la moneda base
+    let convertedPrice = 0;
+    const baseRate = parseFloat(baseCurrency.exchange_rate) || 1;
+
+    if (baseCurrency.code === 'VES') {
+      // USD → VES: multiplicar por tasa de USD (344.50)
+      convertedPrice = priceRef * 344.50;
+    } else if (baseCurrency.code === 'USD') {
+      // USD → USD: precio de referencia directo
+      convertedPrice = priceRef;
+    } else {
+      // USD → Otra moneda (EUR, CAD): Convertir usando tasas
+      // priceRef está en USD, convertir a moneda base
+      // Ejemplo: 80 USD → EUR
+      // 80 USD × (tasa_moneda_base / tasa_USD)
+      convertedPrice = priceRef * (baseRate / 344.50);
+    }
+
+    return {
+      amount: convertedPrice,
+      ref: priceRef
+    };
+  };
+
+  // ✅ SISTEMA REF: Calcular margen del producto
+  const getMargin = (product: Product): { percentage: number; color: string } => {
+    if (!product.price_usd || !product.cost || product.cost === 0) {
+      return { percentage: 0, color: 'text-gray-400' };
+    }
+    const margin = ((product.price_usd - product.cost) / product.cost) * 100;
+    let color = 'text-green-600';
+    if (margin < 20) color = 'text-orange-600';
+    if (margin < 10) color = 'text-red-600';
+    return { percentage: margin, color };
   };
 
   // ✅ MONEDA: Obtener precio convertido a la moneda de visualización
@@ -198,7 +387,10 @@ const ProductsPage = () => {
 
   const ProductCard = ({ product }: { product: Product }) => {
     const stockStatus = getStockStatus(product);
-    
+    const margin = getMargin(product);
+    const productStatus = getProductStatus(product);
+    const quantity = product.stock_quantity || product.quantity;
+
     return (
       <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100 hover:shadow-xl hover:shadow-gray-500/10 transition-all duration-300 hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
@@ -218,7 +410,7 @@ const ProductsPage = () => {
             >
               <Edit className="w-4 h-4" />
             </Link>
-            <button 
+            <button
               onClick={() => handleDelete(product.id)}
               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
             >
@@ -226,46 +418,123 @@ const ProductsPage = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="mb-4">
           <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
-            {product.name}
+            {product.short_name || product.name}
           </h3>
           <p className="text-sm text-gray-500 font-mono">{product.sku}</p>
-          {product.category && (
-            <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full mt-2">
-              {product.category.name}
-            </span>
+
+          {/* ✅ SISTEMA ESCRITORIO: Badges de clasificación */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {product.product_type && (
+              <span className="inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                {getProductTypeLabel(product.product_type)}
+              </span>
+            )}
+            {product.mark && (
+              <span className="inline-block px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">
+                {product.mark}
+              </span>
+            )}
+            {product.model && (
+              <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded-full">
+                {product.model}
+              </span>
+            )}
+            {product.category && (
+              <span className="inline-block px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                {product.category.name}
+              </span>
+            )}
+            {product.department && (
+              <span className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+                {product.department.name}
+              </span>
+            )}
+          </div>
+
+          {/* ✅ SISTEMA ESCRITORIO: Badges de configuración de stock */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            {product.serialized && (
+              <span className="inline-flex items-center px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-200">
+                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full mr-1"></span>
+                Serial
+              </span>
+            )}
+            {product.use_lots && (
+              <span className="inline-flex items-center px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-200">
+                <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mr-1"></span>
+                Lotes
+              </span>
+            )}
+            {product.allow_negative_stock && (
+              <span className="inline-flex items-center px-2 py-1 bg-red-50 text-red-700 text-xs rounded-full border border-red-200">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full mr-1"></span>
+                Stock Negativo
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ✅ SISTEMA ESCRITORIO: Precio local (precio principal) */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 mb-1">Precio</p>
+          <p className="text-2xl font-light text-gray-900">
+            {product.price ? formatCurrency(product.price) : 'N/A'}
+          </p>
+          {product.price_usd && (
+            <p className="text-xs text-blue-500 mt-1">
+              USD: ${product.price_usd.toFixed(2)}
+            </p>
+          )}
+          {/* ✅ SISTEMA ESCRITORIO: Mostrar tipo de precio */}
+          {product.sale_price_type !== undefined && (
+            <p className="text-xs text-gray-500 mt-1">
+              Tipo: {getPriceTypeLabel(product.sale_price_type)}
+            </p>
           )}
         </div>
-        
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <p className="text-2xl font-light text-gray-900">
-              {getPriceInDisplayCurrency(product).formatted}
-              {getPriceInDisplayCurrency(product).originalCurrency && (
-                <span className="text-sm text-gray-400 ml-2">
-                  ({getPriceInDisplayCurrency(product).originalCurrency})
-                </span>
-              )}
-            </p>
+
+        {/* ✅ SISTEMA ESCRITORIO: Mostrar margen (usando precio local) */}
+        {product.price && product.cost && (
+          <div className="mb-4 p-3 bg-gray-50 rounded-xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-500">Margen</p>
+                <p className={`text-lg font-semibold ${margin.color}`}>
+                  {margin.percentage.toFixed(1)}%
+                </p>
+              </div>
+              <div className="text-right text-xs text-gray-500">
+                <p>Costo: {formatCurrency(product.cost)}</p>
+                <p>Precio: {formatCurrency(product.price)}</p>
+              </div>
+            </div>
           </div>
+        )}
+
+        <div className="flex items-center justify-between mb-4">
           <div className="text-right">
             <p className="text-sm text-gray-500">Stock</p>
             <div className="flex items-center">
               <span className="font-medium text-gray-900 mr-2">
-                {product.quantity}
+                {quantity}
               </span>
-              {product.quantity <= 10 && (
+              {(quantity <= 10 && !product.allow_negative_stock) && (
                 <AlertTriangle className="w-4 h-4 text-orange-500" />
               )}
             </div>
           </div>
         </div>
-        
+
+        {/* ✅ SISTEMA ESCRITORIO: Estado del producto */}
         <div className="flex items-center justify-between">
           <span className={`px-3 py-1 text-sm rounded-full ${stockStatus.bg} ${stockStatus.color}`}>
             {stockStatus.label}
+          </span>
+          <span className={`px-3 py-1 text-xs rounded-full ${productStatus.bg} ${productStatus.color}`}>
+            {productStatus.label}
           </span>
         </div>
       </div>
@@ -398,7 +667,7 @@ const ProductsPage = () => {
               onChange={(e) => setSelectedCategory(e.target.value ? Number(e.target.value) : null)}
               className="px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
             >
-              <option value="">Todas las Categorías</option>
+              <option value="">Todos los Departamentos</option>
               {categories.map((cat) => (
                 <option key={cat.id} value={cat.id}>
                   {cat.name}
@@ -477,9 +746,19 @@ const ProductsPage = () => {
                   </th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Producto</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">SKU</th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Categoría</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Nueva columna Marca/Modelo */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Marca/Modelo</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Departamento</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Nueva columna Tipo */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Tipo</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Nueva columna Impuesto */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">IVA</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Precio (moneda local) */}
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Precio</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Margen de ganancia */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Margen</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Stock</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Nueva columna Estado */}
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
                 </tr>
@@ -487,6 +766,12 @@ const ProductsPage = () => {
               <tbody className="divide-y divide-gray-100">
                 {filteredProducts.map((product) => {
                   const stockStatus = getStockStatus(product);
+                  const margin = getMargin(product);
+                  const productStatus = getProductStatus(product);
+                  const productCurrency = getProductCurrency(product);
+                  const baseCurrency = currencies.find((c: any) => c.is_base_currency);
+                  const productPrice = getProductPrice(product, baseCurrency);
+                  const quantity = product.stock_quantity || product.quantity;
                   return (
                     <tr key={product.id} className="hover:bg-gray-50/50 transition-colors">
                       <td className="py-4 px-6">
@@ -498,13 +783,33 @@ const ProductsPage = () => {
                             <Package className="w-6 h-6 text-gray-500" />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{product.name}</p>
+                            <p className="font-medium text-gray-900">{product.short_name || product.name}</p>
                             <p className="text-sm text-gray-500">ID: {product.id}</p>
+                            {/* ✅ SISTEMA ESCRITORIO: Badges de configuración */}
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {product.serialized && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-teal-50 text-teal-700 text-xs rounded border border-teal-200">S</span>
+                              )}
+                              {product.use_lots && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-orange-50 text-orange-700 text-xs rounded border border-orange-200">L</span>
+                              )}
+                              {product.allow_negative_stock && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 bg-red-50 text-red-700 text-xs rounded border border-red-200">-</span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </td>
                       <td className="py-4 px-6 text-gray-900 font-mono text-sm">
                         {product.sku}
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Marca/Modelo */}
+                      <td className="py-4 px-6">
+                        <div>
+                          {product.mark && <p className="text-sm font-medium text-gray-900">{product.mark}</p>}
+                          {product.model && <p className="text-xs text-gray-500">{product.model}</p>}
+                          {!product.mark && !product.model && <span className="text-gray-400 text-sm">-</span>}
+                        </div>
                       </td>
                       <td className="py-4 px-6">
                         {product.category ? (
@@ -512,30 +817,68 @@ const ProductsPage = () => {
                             {product.category.name}
                           </span>
                         ) : (
-                          <span className="text-gray-400">Sin categoría</span>
+                          <span className="text-gray-400 text-sm">Sin categoría</span>
                         )}
                       </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Tipo */}
+                      <td className="py-4 px-6">
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                          {getProductTypeLabel(product.product_type)}
+                        </span>
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna IVA */}
+                      <td className="py-4 px-6">
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded">
+                          {getTaxCodeLabel(product.sale_tax_code)}
+                        </span>
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Precio convertido a moneda base */}
                       <td className="py-4 px-6 font-medium text-gray-900">
-                        {getPriceInDisplayCurrency(product).formatted}
-                        {getPriceInDisplayCurrency(product).originalCurrency && (
-                          <span className="text-xs text-gray-400 ml-1 block">
-                            {getPriceInDisplayCurrency(product).originalCurrency}
+                        <div>
+                          <span className="text-lg">
+                            {productPrice.amount > 0 ? formatCurrencyWithSymbol(productPrice.amount, productCurrency) : 'N/A'}
                           </span>
+                          {productPrice.ref > 0 && (
+                            <span className="text-xs text-blue-500 ml-2 block">
+                              Ref: {formatCurrency(productPrice.ref)}
+                            </span>
+                          )}
+                          {!productPrice.ref && productPrice.amount > 0 && (
+                            <span className="text-xs text-gray-400 ml-2 block">
+                              {productCurrency.name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Margen de ganancia */}
+                      <td className="py-4 px-6">
+                        {product.price && product.cost ? (
+                          <div>
+                            <span className={`font-semibold ${margin.color}`}>
+                              {margin.percentage.toFixed(1)}%
+                            </span>
+                            <div className="text-xs text-gray-400">
+                              {formatCurrencyWithSymbol(product.cost, productCurrency)} → {formatCurrencyWithSymbol(product.price, productCurrency)}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
                         )}
                       </td>
                       <td className="py-4 px-6">
                         <div className="flex items-center">
                           <span className="font-medium text-gray-900 mr-2">
-                            {product.quantity}
+                            {quantity}
                           </span>
-                          {product.quantity <= 10 && (
+                          {(quantity <= 10 && !product.allow_negative_stock) && (
                             <AlertTriangle className="w-4 h-4 text-orange-500" />
                           )}
                         </div>
                       </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Estado */}
                       <td className="py-4 px-6">
-                        <span className={`px-3 py-1 text-sm rounded-full ${stockStatus.bg} ${stockStatus.color}`}>
-                          {stockStatus.label}
+                        <span className={`px-3 py-1 text-sm rounded-full ${productStatus.bg} ${productStatus.color}`}>
+                          {productStatus.label}
                         </span>
                       </td>
                       <td className="py-4 px-6">
@@ -552,7 +895,7 @@ const ProductsPage = () => {
                           >
                             <Edit className="w-4 h-4" />
                           </Link>
-                          <button 
+                          <button
                             onClick={() => handleDelete(product.id)}
                             className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                           >

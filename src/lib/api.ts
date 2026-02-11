@@ -48,10 +48,10 @@ apiClient.interceptors.request.use(
     }
 
     if (tokenFromStorage) {
-      console.log('🔐 Request: Using token from localStorage');
+      console.log('🔐 Request:', config.method?.toUpperCase(), config.url, '| Token:', tokenFromStorage.substring(0, 20) + '...');
       config.headers.Authorization = `Bearer ${tokenFromStorage}`;
     } else {
-      console.log('🔐 Request: No token in localStorage, relying on cookies');
+      console.log('⚠️ Request:', config.method?.toUpperCase(), config.url, '| No token found in localStorage');
     }
 
     return config;
@@ -193,6 +193,19 @@ export const invoicesAPI = {
 
   createCreditMovement: (invoiceId: number, data: any) =>
     apiClient.post(`/invoices/${invoiceId}/credit-movements`, data),
+
+  // ✅ MULTI-MONEDA: Preview de factura con conversión USD→VES
+  preview: (data: {
+    items: Array<{ product_id: number; quantity: number }>;
+    customer_id: number;
+    payment_method: string;
+    manual_exchange_rate?: number | null;
+    igtf_exempt?: boolean;
+    iva_percentage?: number;
+    reference_currency_code?: string;
+    payment_currency_code?: string;
+  }) =>
+    apiClient.post('/invoices/preview', data),
 };
 
 // =============================================
@@ -427,6 +440,9 @@ export const categoriesAPI = {
   getAll: () =>
     apiClient.get('/categories'),
 
+  list: () =>
+    apiClient.get('/categories'),
+
   getById: (id: number) =>
     apiClient.get(`/categories/${id}`),
 
@@ -446,15 +462,19 @@ export const categoriesAPI = {
 // =============================================
 // 💰 CURRENCIES API (MONEDAS)
 // =============================================
+// =============================================
+// 💱 CURRENCIES API - SISTEMA VENEZOLANO COMPLETO
+// =============================================
 export const currenciesAPI = {
-  getAll: (params?: { skip?: number; limit?: number; active_only?: boolean }) =>
-    apiClient.get('/currencies', { params }),
+  // ==================== CRUD BÁSICO ====================
+  getAll: (params?: { skip?: number; limit?: number; is_active?: boolean }) =>
+    apiClient.get('/currencies/', { params }),
 
   getById: (id: number) =>
     apiClient.get(`/currencies/${id}`),
 
   create: (data: any) =>
-    apiClient.post('/currencies', data),
+    apiClient.post('/currencies/', data),
 
   update: (id: number, data: any) =>
     apiClient.put(`/currencies/${id}`, data),
@@ -462,11 +482,306 @@ export const currenciesAPI = {
   delete: (id: number) =>
     apiClient.delete(`/currencies/${id}`),
 
-  // ✅ MONEDA: Convertir moneda
-  convert: (amount: number, from_currency_id: number, to_currency_id: number) =>
+  // ==================== TASAS DE CAMBIO ====================
+
+  /**
+   * Actualizar tasa de cambio con registro histórico
+   * Crea automáticamente un registro en CurrencyRateHistory
+   */
+  updateRate: (id: number, data: {
+    new_rate: string;
+    change_reason?: string;
+    change_type?: 'manual' | 'automatic_api' | 'scheduled' | 'correction';
+    change_source?: string;
+    provider_metadata?: any;
+  }) =>
+    apiClient.put(`/currencies/${id}/rate`, data),
+
+  /**
+   * Obtener historial de cambios de tasa
+   * Incluye: old_rate, new_rate, diferencia, variación %, usuario, timestamp
+   */
+  getRateHistory: (id: number, limit: number = 100) =>
+    apiClient.get(`/currencies/${id}/rate/history`, { params: { limit } }),
+
+  /**
+   * Obtener estadísticas completas de una moneda
+   * Incluye: total cambios, última actualización, variación promedio, máxima/mínima
+   */
+  getStatistics: (id: number) =>
+    apiClient.get(`/currencies/${id}/statistics`),
+
+  /**
+   * Establecer una moneda como moneda base de la empresa
+   * Desactiva automáticamente la moneda base anterior
+   */
+  setBaseCurrency: (id: number) =>
+    apiClient.post(`/currencies/${id}/set-base-currency`),
+
+  // ==================== CONVERSIÓN ====================
+
+  /**
+   * Convertir monto entre monedas usando tasas configuradas
+   * @param from_currency - Moneda origen (ej: "USD")
+   * @param to_currency - Moneda destino (ej: "VES")
+   * @param amount - Monto a convertir
+   */
+  convert: (from_currency: string, to_currency: string, amount: number) =>
     apiClient.get('/currencies/convert', {
-      params: { amount, from_currency_id, to_currency_id }
+      params: {
+        from_currency,
+        to_currency,
+        amount
+      }
     }),
+
+  /**
+   * Obtener todos los factores de conversión
+   * Retorna tabla con: code, name, exchange_rate, conversion_method, factor, applies_igtf
+   */
+  getConversionFactors: () =>
+    apiClient.get('/currencies/factors'),
+
+  // ==================== IGTF (IMPUESTO VENEZOLANO) ====================
+
+  /**
+   * Calcular IGTF para una transacción
+   * @param amount - Monto en moneda extranjera
+   * @param currency_id - ID de moneda
+   * @param payment_method - Método de pago (transfer, cash, etc.)
+   */
+  calculateIGTF: (amount: number, currency_id: number, payment_method: string = 'transfer') =>
+    apiClient.post('/currencies/igtf/calculate', null, {
+      params: { amount, currency_id, payment_method }
+    }),
+
+  /**
+   * Obtener configuraciones de IGTF de la empresa
+   * @param currency_id - ID de moneda (opcional, para filtrar)
+   */
+  getIGTFConfigs: (currency_id?: number) =>
+    apiClient.get('/currencies/igtf/config', {
+      params: currency_id ? { currency_id } : undefined
+    }),
+
+  /**
+   * Crear configuración personalizada de IGTF
+   * Útil para empresas con régimen especial
+   */
+  createIGTFConfig: (data: any) =>
+    apiClient.post('/currencies/igtf/config', data),
+
+  // ==================== VALIDACIÓN ====================
+
+  /**
+   * Validar código ISO 4217
+   * @param code - Código de 3 letras (ej: "USD")
+   */
+  validateISO: (code: string) =>
+    apiClient.post('/currencies/validate/iso-4217', null, {
+      params: { code }
+    }),
+};
+
+// =============================================
+// ✅ SISTEMA ESCRITORIO: COINS API (Desktop ERP)
+// =============================================
+
+/**
+ * Coins API - Sistema de Monedas Desktop ERP Venezolano
+ *
+ * Endpoints compatibles con el sistema desktop que incluyen:
+ * - Gestión de monedas con campos específicos (factor_type, rounding_type, etc.)
+ * - Actualización de tasas con creación automática de coin_history
+ * - Consulta de moneda base y monedas activas (show_in_browsers)
+ */
+export const coinsAPI = {
+  // ==================== CONSULTAS ESPECIALES ====================
+
+  /**
+   * Obtener la moneda base de la empresa
+   * GET /coins/base
+   */
+  getBaseCoin: () =>
+    apiClient.get('/coins/base'),
+
+  /**
+   * Obtener solo las monedas activas que se muestran en browsers
+   * Equivalente a: show_in_browsers = true AND is_active = true
+   * GET /coins/active
+   */
+  getActiveCoins: () =>
+    apiClient.get('/coins/active'),
+
+  // ==================== CRUD BÁSICO ====================
+
+  /**
+   * Listar todas las monedas de la empresa
+   * GET /coins
+   */
+  getAll: (params?: { skip?: number; limit?: number }) =>
+    apiClient.get('/coins', { params }),
+
+  /**
+   * Obtener una moneda por ID
+   * GET /coins/{coin_id}
+   */
+  getById: (coinId: number) =>
+    apiClient.get(`/coins/${coinId}`),
+
+  /**
+   * Crear nueva moneda (Coin) - Desktop ERP
+   * POST /coins
+   *
+   * Campos del sistema desktop ERP:
+   * - code: ISO 4217 (USD, VES, EUR)
+   * - sales_aliquot: Tasa de venta
+   * - buy_aliquot: Tasa de compra
+   * - factor_type: 0 = Base, 1 = Convertida
+   * - rounding_type: Tipo de redondeo
+   * - status: "01", "02", etc.
+   */
+  create: (data: {
+    code: string;
+    name: string;
+    symbol: string;
+    sales_aliquot: number;
+    buy_aliquot?: number;
+    factor_type: number;
+    rounding_type?: number;
+    status?: string;
+    show_in_browsers?: boolean;
+    value_inventory?: boolean;
+    applies_igtf?: boolean;
+    decimal_places?: number;
+    igtf_rate?: number;
+  }) =>
+    apiClient.post('/coins', data),
+
+  /**
+   * Actualizar moneda (Coin) - Desktop ERP
+   * PUT /coins/{coin_id}
+   */
+  update: (coinId: number, data: {
+    name?: string;
+    symbol?: string;
+    sales_aliquot?: number;
+    buy_aliquot?: number;
+    factor_type?: number;
+    rounding_type?: number;
+    status?: string;
+    show_in_browsers?: boolean;
+    value_inventory?: boolean;
+    applies_igtf?: boolean;
+    decimal_places?: number;
+    igtf_rate?: number;
+    is_active?: boolean;
+  }) =>
+    apiClient.put(`/coins/${coinId}`, data),
+
+  /**
+   * Eliminar moneda (solo admin)
+   * DELETE /coins/{coin_id}
+   *
+   * Precaución: Verifica que no esté siendo usada en productos o facturas.
+   * No se puede eliminar la moneda base.
+   */
+  delete: (coinId: number) =>
+    apiClient.delete(`/coins/${coinId}`),
+
+  // ==================== TASAS DE CAMBIO ====================
+
+  /**
+   * Actualizar tasa de cambio y registrar en historial
+   * PUT /coins/{coin_id}/rate?sales_aliquot={value}&buy_aliquot={value}
+   *
+   * Este endpoint actualiza el exchange_rate y crea automáticamente
+   * un registro en coin_history para mantener la auditoría del sistema desktop ERP.
+   *
+   * Retorna: { message, coin_id, old_rate, new_rate, history_id }
+   */
+  updateRate: (
+    coinId: number,
+    salesAliquot: number,
+    buyAliquot?: number
+  ) =>
+    apiClient.put(`/coins/${coinId}/rate`, null, {
+      params: {
+        sales_aliquot: salesAliquot,
+        buy_aliquot: buyAliquot || salesAliquot
+      }
+    }),
+};
+
+// =============================================
+// ✅ SISTEMA ESCRITORIO: COIN HISTORY API (Desktop ERP)
+// =============================================
+
+/**
+ * CoinHistory API - Historial de Tasas de Cambio (Desktop ERP)
+ *
+ * Sistema de auditoría de cambios de tasas con estructura
+ * compatible con el desktop ERP venezolano (fecha y hora separadas).
+ */
+export const coinHistoryAPI = {
+  /**
+   * Listar historial de monedas
+   * GET /coin-history?currency_id={id}&skip={0}&limit={100}
+   */
+  getAll: (params?: {
+    currency_id?: number;
+    skip?: number;
+    limit?: number;
+  }) =>
+    apiClient.get('/coin-history', { params }),
+
+  /**
+   * Obtener un registro de historial por ID
+   * GET /coin-history/{id}
+   */
+  getById: (id: number) =>
+    apiClient.get(`/coin-history/${id}`),
+
+  /**
+   * Crear registro en coin_history
+   * POST /coin-history
+   */
+  create: (data: {
+    currency_id: number;
+    sales_aliquot: number;
+    buy_aliquot: number;
+    register_date: string;  // Date ISO
+    register_hour: string;  // Time ISO
+    user_id?: number;
+  }) =>
+    apiClient.post('/coin-history', data),
+
+  /**
+   * Importación por lotes desde desktop ERP
+   * POST /coin-history/batch
+   *
+   * Permite importar múltiples registros de historial
+   * desde el sistema desktop.
+   */
+  createBatch: (data: Array<{
+    currency_id: number;
+    sales_aliquot: number;
+    buy_aliquot: number;
+    register_date: string;
+    register_hour: string;
+    user_id?: number;
+  }>) =>
+    apiClient.post('/coin-history/batch', data),
+
+  /**
+   * Obtener la tasa más reciente de una moneda
+   * GET /coin-history/currency/{currency_id}/latest
+   *
+   * Retorna el registro más reciente de coin_history
+   * para una moneda específica.
+   */
+  getLatestByCurrency: (currencyId: number) =>
+    apiClient.get(`/coin-history/currency/${currencyId}/latest`),
 };
 
 // =============================================
@@ -546,6 +861,135 @@ export const healthAPI = {
 
   root: () =>
     apiClient.get('/'),
+};
+
+// =============================================
+// 💰 MULTI-CURRENCY RATES API
+// =============================================
+export const ratesAPI = {
+  // Obtener tasa de hoy
+  getTodayRate: (fromCurrency: string, toCurrency: string) =>
+    apiClient.get(`/rates/today?from_currency=${fromCurrency}&to_currency=${toCurrency}`),
+
+  // Obtener tasa más reciente
+  getLatestRate: (fromCurrency: string, toCurrency: string) =>
+    apiClient.get(`/rates/latest?from_currency=${fromCurrency}&to_currency=${toCurrency}`),
+
+  // Obtener historial de tasas
+  getRateHistory: (fromCurrency: string, toCurrency: string, limit?: number) =>
+    apiClient.get(`/rates/history?from_currency=${fromCurrency}&to_currency=${toCurrency}&limit=${limit || 100}`),
+
+  // Sincronizar tasas BCV
+  syncBCVRates: (forceRefresh = false) =>
+    apiClient.post(`/rates/bcv/sync?force_refresh=${forceRefresh}`),
+
+  // Estado del servicio BCV
+  getBCVStatus: () =>
+    apiClient.get('/rates/bcv/status'),
+
+  // Convertir monto entre monedas
+  convert: (amount: number, fromCurrency: string, toCurrency: string, rateDate?: string, manualRate?: number) => {
+    let url = `/rates/convert?amount=${amount}&from_currency=${fromCurrency}&to_currency=${toCurrency}`;
+    if (rateDate) url += `&rate_date=${rateDate}`;
+    if (manualRate) url += `&manual_rate=${manualRate}`;
+    return apiClient.post(url);
+  },
+
+  // Crear tasa manual
+  createManualRate: (fromCurrency: string, toCurrency: string, rateDate: string, exchangeRate: number, notes?: string) =>
+    apiClient.post(`/rates/manual?from_currency=${fromCurrency}&to_currency=${toCurrency}&rate_date=${rateDate}&exchange_rate=${exchangeRate}${notes ? `&notes=${notes}` : ''}`),
+};
+
+// =============================================
+// PRECIOS DE REFERENCIA (REF) - VENEZUELA
+// =============================================
+export const referencePricesAPI = {
+  // Obtener precio de referencia de un producto
+  getProductReferencePrice: (productId: number, referenceCurrency: string = 'USD') =>
+    apiClient.get(`/reference-prices/products/${productId}/reference-price?reference_currency=${referenceCurrency}`),
+
+  // Obtener resumen de precios para múltiples productos
+  getProductsSummary: (productIds: number[]) =>
+    apiClient.get(`/reference-prices/products/summary?product_ids=${productIds.join(',')}`),
+
+  // Calcular item de factura
+  calculateInvoiceItem: (productId: number, quantity: number, priceReferenceOverride?: number, paymentMethod: string = 'transferencia', manualExchangeRate?: number) => {
+    const body: any = { product_id: productId, quantity };
+    if (priceReferenceOverride) body.price_reference_override = priceReferenceOverride;
+
+    return apiClient.post(`/reference-prices/invoices/calculate-item?payment_method=${paymentMethod}${manualExchangeRate ? `&manual_exchange_rate=${manualExchangeRate}` : ''}`, body);
+  },
+
+  // Calcular totales de factura completa
+  calculateInvoiceTotals: (items: any[], customerId?: number, paymentMethod: string = 'transferencia', manualExchangeRate?: number, discountPercentage?: number) =>
+    apiClient.post('/reference-prices/invoices/calculate-totals', {
+      items,
+      customer_id: customerId,
+      payment_method: paymentMethod,
+      manual_exchange_rate: manualExchangeRate,
+      discount_percentage: discountPercentage,
+    }),
+};
+
+// =============================================
+// ✅ SISTEMA ESCRITORIO: OPERACIONES DE VENTA
+// =============================================
+export const salesOperationsAPI = {
+  // Listar todas las operaciones
+  getAll: (params?: any) =>
+    apiClient.get('/sales-operations', { params }),
+
+  // Obtener por ID
+  getById: (id: number) =>
+    apiClient.get(`/sales-operations/${id}`),
+
+  // Crear nueva operación
+  create: (data: any) =>
+    apiClient.post('/sales-operations', data),
+
+  // Actualizar operación
+  update: (id: number, data: any) =>
+    apiClient.put(`/sales-operations/${id}`, data),
+
+  // Eliminar operación
+  delete: (id: number) =>
+    apiClient.delete(`/sales-operations/${id}`),
+
+  // ✅ Convertir operación a otro tipo
+  convert: (id: number, targetType: string) =>
+    apiClient.post(`/sales-operations/${id}/convert?target_type=${targetType}`),
+
+  // ✅ Estadísticas
+  getStats: () =>
+    apiClient.get('/sales-operations/stats/summary'),
+
+  // ✅ Listar por tipo
+  getByType: (operationType: string) =>
+    apiClient.get(`/sales-operations/type/${operationType}`),
+
+  // ✅ Listar presupuestos
+  getBudgets: () =>
+    apiClient.get('/sales-operations/type/BUDGET'),
+
+  // ✅ Listar pedidos
+  getOrders: () =>
+    apiClient.get('/sales-operations/type/ORDER'),
+
+  // ✅ Listar órdenes de entrega
+  getDeliveryNotes: () =>
+    apiClient.get('/sales-operations/type/DELIVERYNOTE'),
+
+  // ✅ Listar facturas
+  getBills: () =>
+    apiClient.get('/sales-operations/type/BILL'),
+
+  // ✅ Listar notas de crédito
+  getCreditNotes: () =>
+    apiClient.get('/sales-operations/type/CREDITNOTE'),
+
+  // ✅ Listar notas de débito
+  getDebitNotes: () =>
+    apiClient.get('/sales-operations/type/DEBITNOTE'),
 };
 
 // =============================================

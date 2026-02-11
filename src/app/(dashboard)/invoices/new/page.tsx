@@ -23,6 +23,11 @@ import {
 import { invoicesAPI, customersAPI, productsAPI, warehousesAPI, warehouseProductsAPI } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { extractErrorMessage } from '@/lib/errorHandler';
+import { CurrencySelector } from '@/components/invoices/CurrencySelector';
+import { MultiCurrencyTotals } from '@/components/invoices/MultiCurrencyTotals';
+import { ProductPriceDisplay } from '@/components/invoices/ProductPriceDisplay';
+import { useCurrencyStore } from '@/store/currency-store';
+import { getBaseCurrency } from '@/store/currency-store';
 
 interface InvoiceItem {
   product_id: number;
@@ -43,6 +48,10 @@ interface InvoiceFormData {
   items: InvoiceItem[];
   notes: string;
   payment_terms: string;
+
+  // Multimoneda
+  currency_id: number | null;
+  igtf_exempt: boolean;
 
   // Venezuela SENIAT
   transaction_type: 'contado' | 'credito';
@@ -74,6 +83,9 @@ interface Warehouse {
 }
 
 const InvoiceFormPage = () => {
+  const { currencies, fetchCurrencies } = useCurrencyStore();
+  const baseCurrency = getBaseCurrency({ currencies, selectedCurrency: null, rateHistory: [], statistics: null, conversionFactors: [], isLoading: false, isUpdatingRate: false, isConverting: false, error: null, total: 0, skip: 0, limit: 100 });
+
   const [formData, setFormData] = useState<InvoiceFormData>({
     customer_id: null,
     warehouse_id: null,
@@ -85,12 +97,28 @@ const InvoiceFormPage = () => {
     notes: '',
     payment_terms: '30',
 
+    // Multimoneda - valores por defecto
+    currency_id: null, // Seleccionará del store
+    igtf_exempt: false,
+
     // Venezuela - valores por defecto
     transaction_type: 'contado',
     payment_method: 'efectivo',
     credit_days: 0,
     iva_percentage: 16
   });
+
+  // Cargar moneda base por defecto al iniciar
+  useEffect(() => {
+    const loadCurrencies = async () => {
+      await fetchCurrencies({ is_active: true });
+      // Si no hay moneda seleccionada, usar la base
+      if (!formData.currency_id && baseCurrency) {
+        setFormData(prev => ({ ...prev, currency_id: baseCurrency.id }));
+      }
+    };
+    loadCurrencies();
+  }, []);
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -222,6 +250,10 @@ const InvoiceFormPage = () => {
         notes: invoice.notes || '',
         payment_terms: invoice.payment_terms || '30',
 
+        // Multimoneda - cargar desde la factura
+        currency_id: invoice.currency_id || null,
+        igtf_exempt: invoice.igtf_exempt || false,
+
         // Venezuela SENIAT - cargar desde la factura
         transaction_type: invoice.transaction_type || 'contado',
         payment_method: invoice.payment_method || 'efectivo',
@@ -345,6 +377,10 @@ const InvoiceFormPage = () => {
       newErrors.warehouse = 'Debes seleccionar un almacén';
     }
 
+    if (!formData.currency_id) {
+      newErrors.currency_id = 'Debes seleccionar una moneda';
+    }
+
     if (formData.items.length === 0) {
       newErrors.items = 'Debes agregar al menos un producto';
     }
@@ -378,6 +414,10 @@ const InvoiceFormPage = () => {
         })),
         notes: formData.notes,
         payment_terms: formData.payment_terms,
+
+        // Multimoneda
+        currency_id: formData.currency_id,
+        igtf_exempt: formData.igtf_exempt,
 
         // Venezuela SENIAT
         transaction_type: formData.transaction_type,
@@ -619,7 +659,7 @@ const InvoiceFormPage = () => {
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>
-                    
+
                     {showWarehouseDropdown && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-lg z-10 max-h-60 overflow-y-auto">
                         {warehouses.map(warehouse => (
@@ -640,6 +680,34 @@ const InvoiceFormPage = () => {
                     <p className="mt-2 text-sm text-red-600">{errors.warehouse}</p>
                   )}
                 </div>
+
+                {/* Currency Selection */}
+                <CurrencySelector
+                  value={formData.currency_id}
+                  onChange={(currencyId) => setFormData(prev => ({ ...prev, currency_id: currencyId }))}
+                  error={errors.currency_id}
+                />
+
+                {/* IGTF Exemption */}
+                {formData.currency_id && currencies.find(c => c.id === formData.currency_id)?.applies_igtf && (
+                  <div className="flex items-center space-x-3 p-4 bg-orange-50/80 border border-orange-200 rounded-2xl">
+                    <input
+                      type="checkbox"
+                      id="igtf_exempt"
+                      checked={formData.igtf_exempt}
+                      onChange={(e) => setFormData(prev => ({ ...prev, igtf_exempt: e.target.checked }))}
+                      className="w-5 h-5 text-orange-600 rounded focus:ring-2 focus:ring-orange-500"
+                    />
+                    <div className="flex-1">
+                      <label htmlFor="igtf_exempt" className="block text-sm font-medium text-orange-900 cursor-pointer">
+                        Exentar IGTF en esta factura
+                      </label>
+                      <p className="text-xs text-orange-700 mt-1">
+                        Marca si esta transacción está exenta del Impuesto a Grandes Transacciones Financieras
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Status */}
                 <div>
@@ -843,7 +911,11 @@ const InvoiceFormPage = () => {
                                 <p className="font-medium text-gray-900">{product.name}</p>
                                 <div className="flex items-center justify-between text-sm text-gray-500">
                                   <span>{product.sku}</span>
-                                  <span className="font-medium text-gray-900">${product.price}</span>
+                                  <ProductPriceDisplay
+                                    price={product.price}
+                                    currencyId={formData.currency_id}
+                                    className="text-right"
+                                  />
                                 </div>
                               </button>
                             ))
@@ -1013,86 +1085,13 @@ const InvoiceFormPage = () => {
 
         {/* Sidebar - Invoice Preview */}
         <div className="space-y-6">
-          {/* Summary Card */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden sticky top-8">
-            <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Resumen</h3>
-            </div>
-            <div className="p-6">
-              <div className="space-y-3">
-                {/* Subtotal */}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium text-gray-900">
-                    {formatCurrency(totals.subtotal)}
-                  </span>
-                </div>
-
-                {/* Venezuela - Base Imponible */}
-                {totals.taxableBase > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-xs text-gray-500">Base Imponible</span>
-                    <span className="text-sm text-gray-700">
-                      {formatCurrency(totals.taxableBase)}
-                    </span>
-                  </div>
-                )}
-
-                {/* Venezuela - Monto Exento */}
-                {totals.exemptAmount > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-xs text-green-600">Monto Exento</span>
-                    <span className="text-sm text-green-700">
-                      {formatCurrency(totals.exemptAmount)}
-                    </span>
-                  </div>
-                )}
-
-                {/* IVA */}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">IVA ({formData.iva_percentage}%)</span>
-                  <span className="font-medium text-gray-900">
-                    {formatCurrency(totals.tax)}
-                  </span>
-                </div>
-
-                {/* Total */}
-                <div className="flex justify-between pt-3 border-t border-gray-200">
-                  <span className="font-semibold text-gray-900">Total</span>
-                  <span className="text-2xl font-light text-blue-600">
-                    {formatCurrency(totals.total)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Venezuela Info */}
-              {(totals.taxableBase > 0 || totals.exemptAmount > 0) && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-xl">
-                  <p className="text-xs text-gray-600 mb-2 font-medium">Desglose IVA (Venezuela):</p>
-                  <div className="space-y-1">
-                    {totals.taxableBase > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-500">Operaciones gravadas:</span>
-                        <span className="text-gray-700">{formatCurrency(totals.taxableBase)}</span>
-                      </div>
-                    )}
-                    {totals.exemptAmount > 0 && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-green-600">Operaciones exentas:</span>
-                        <span className="text-green-700">{formatCurrency(totals.exemptAmount)}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 p-4 bg-blue-50 rounded-2xl">
-                <p className="text-sm text-blue-900">
-                  <span className="font-medium">Items:</span> {formData.items.length}
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* MultiCurrency Totals */}
+          <MultiCurrencyTotals
+            totals={totals}
+            currencyId={formData.currency_id}
+            ivaPercentage={formData.iva_percentage}
+            itemsCount={formData.items.length}
+          />
 
           {/* Help Card */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
@@ -1104,9 +1103,9 @@ const InvoiceFormPage = () => {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Cliente requerido</p>
+                    <p className="text-sm font-medium text-gray-900">Moneda requerida</p>
                     <p className="text-xs text-gray-500">
-                      Selecciona el cliente antes de guardar
+                      Selecciona la moneda antes de guardar
                     </p>
                   </div>
                 </div>
@@ -1114,9 +1113,9 @@ const InvoiceFormPage = () => {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-green-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Productos únicos</p>
+                    <p className="text-sm font-medium text-gray-900">IGTF automático</p>
                     <p className="text-xs text-gray-500">
-                      Cada producto debe agregarse una sola vez
+                      Se calcula automáticamente para divisas (USD, EUR)
                     </p>
                   </div>
                 </div>
@@ -1124,9 +1123,9 @@ const InvoiceFormPage = () => {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-purple-400 rounded-full mt-2"></div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Impuestos flexibles</p>
+                    <p className="text-sm font-medium text-gray-900">Conversión VES</p>
                     <p className="text-xs text-gray-500">
-                      Puedes ajustar el % de impuesto por producto
+                      Los totales se muestran en VES para referencia
                     </p>
                   </div>
                 </div>

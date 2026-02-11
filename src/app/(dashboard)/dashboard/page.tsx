@@ -16,6 +16,7 @@ import {
 import { useAuthStore } from '@/store/auth-store';
 import { useDashboardStats } from '@/hooks/useDashboard';
 import DashboardLayout from '@/components/DashboardLayout';
+import BCVRateWidget from '@/components/BCVRateWidget'; // ✅ MULTI-MONEDA
 import {
   BarChart,
   Bar,
@@ -74,6 +75,11 @@ const DashboardPage = () => {
               <span className="font-light">Actualizar</span>
             </button>
           </div>
+        </div>
+
+        {/* ✅ MULTI-MONEDA: BCV Rate Widget */}
+        <div className="mb-10">
+          <BCVRateWidget className="max-w-md" />
         </div>
 
         {/* Error Message */}

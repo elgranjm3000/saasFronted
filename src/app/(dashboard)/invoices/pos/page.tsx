@@ -21,9 +21,10 @@ import {
   List,
   Building2
 } from 'lucide-react';
-import { invoicesAPI, customersAPI, productsAPI, warehousesAPI, warehouseProductsAPI } from '@/lib/api';
+import { invoicesAPI, customersAPI, productsAPI, warehousesAPI, warehouseProductsAPI, referencePricesAPI } from '@/lib/api';
 import { formatCurrency } from '@/lib/utils';
 import { extractErrorMessage } from '@/lib/errorHandler';
+import type { InvoiceTotalsResponse } from '@/types/api';
 
 interface Warehouse {
   id: number;
@@ -36,6 +37,7 @@ interface Product {
   name: string;
   sku: string;
   price: number;
+  price_usd?: number; // ✅ MULTI-MONEDA: Precio de referencia en USD
   description?: string;
   image?: string;
   stock_quantity?: number;
@@ -80,6 +82,11 @@ const POSPage = () => {
   const [success, setSuccess] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+  // ✅ REF Pricing state
+  const [refTotals, setRefTotals] = useState<InvoiceTotalsResponse | null>(null);
+  const [loadingRef, setLoadingRef] = useState(false);
+  const [useRefPricing, setUseRefPricing] = useState(true); // Default to REF pricing
+
   // Mobile cart toggle
   const [showCart, setShowCart] = useState(false);
 
@@ -103,6 +110,40 @@ const POSPage = () => {
       fetchProductsForWarehouse(selectedWarehouse.id);
     }
   }, [selectedWarehouse]);
+
+  // ✅ Calculate REF totals when cart or payment method changes
+  useEffect(() => {
+    if (cart.length > 0 && useRefPricing) {
+      calculateREFTotals();
+    } else {
+      setRefTotals(null);
+    }
+  }, [cart, paymentMethod, useRefPricing]);
+
+  const calculateREFTotals = async () => {
+    try {
+      setLoadingRef(true);
+
+      const items = cart.map(item => ({
+        product_id: item.product.id,
+        quantity: item.quantity
+      }));
+
+      const response = await referencePricesAPI.calculateInvoiceTotals(
+        items,
+        selectedCustomer?.id,
+        paymentMethod
+      );
+
+      setRefTotals(response.data);
+    } catch (error) {
+      console.error('Error calculating REF totals:', error);
+      // Don't show error to user, just fall back to legacy pricing
+      setRefTotals(null);
+    } finally {
+      setLoadingRef(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -469,6 +510,14 @@ const POSPage = () => {
                       {product.name}
                     </h3>
                     <p className="text-[10px] md:text-xs text-gray-500 mb-1 md:mb-2 hidden sm:block">{product.sku}</p>
+
+                    {/* ✅ REF Price Badge */}
+                    {product.price_usd && (
+                      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-2 py-1 mb-2">
+                        <p className="text-[10px] text-blue-700 font-medium">💵 REF: ${product.price_usd.toFixed(2)}</p>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between">
                       <span className="text-sm md:text-lg font-bold text-blue-600">
                         {formatCurrency(product.price)}
@@ -497,6 +546,12 @@ const POSPage = () => {
                       <div className="text-left">
                         <h3 className="font-medium text-gray-900">{product.name}</h3>
                         <p className="text-sm text-gray-500">{product.sku}</p>
+                        {/* ✅ REF Price Badge */}
+                        {product.price_usd && (
+                          <div className="mt-1 inline-flex items-center bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg px-2 py-0.5">
+                            <span className="text-[10px] text-blue-700 font-medium">💵 REF: ${product.price_usd.toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center space-x-4">
@@ -782,21 +837,121 @@ const POSPage = () => {
 
           {/* Cart Footer */}
           <div className="border-t border-gray-200 bg-gray-50">
-            {/* Total destacado */}
-            <div className="px-4 py-3 bg-white border-b border-gray-200">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase tracking-wide">Total a pagar</p>
-                  <p className="text-3xl font-bold text-gray-900">{formatCurrency(total)}</p>
+            {/* ✅ REF Totals Display */}
+            {refTotals && (
+              <div className="px-4 py-3 bg-gradient-to-br from-blue-50 to-indigo-50 border-b-2 border-blue-200">
+                {/* USD Reference Total - Prominent */}
+                <div className="bg-white rounded-xl p-3 mb-3 border-2 border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wide">💵 Total Referencia (USD)</p>
+                      <p className="text-xs text-blue-600">Moneda estable</p>
+                    </div>
+                    <p className="text-2xl font-black text-blue-600">
+                      ${refTotals.subtotal_reference.toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-right text-xs text-gray-500">
-                  {taxableBase > 0 && <p>Base: {formatCurrency(taxableBase)}</p>}
-                  {exemptAmount > 0 && <p className="text-green-600">Exento: {formatCurrency(exemptAmount)}</p>}
-                  <p>IVA: {formatCurrency(tax)}</p>
-                  <p className="font-medium text-gray-900">{cart.length} items</p>
+
+                {/* VES Payment Breakdown */}
+                <div className="space-y-2">
+                  {/* Tasa de cambio */}
+                  {refTotals.exchange_rate && (
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="text-gray-600">Tasa BCV ({refTotals.rate_date || 'hoy'}):</span>
+                      <span className="font-mono font-semibold text-gray-800">
+                        {refTotals.exchange_rate.toFixed(2)} Bs/USD
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Subtotal VES */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-600">Subtotal VES:</span>
+                    <span className="font-semibold text-gray-800">
+                      Bs. {refTotals.subtotal_target.toLocaleString('es-VE', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </span>
+                  </div>
+
+                  {/* IVA */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-600">IVA (16%):</span>
+                    <span className="font-semibold text-indigo-700">
+                      + Bs. {refTotals.iva_amount.toLocaleString('es-VE', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                      })}
+                    </span>
+                  </div>
+
+                  {/* IGTF (si aplica) */}
+                  {refTotals.igtf_amount > 0 && (
+                    <div className="flex justify-between items-center text-xs bg-orange-50 px-2 py-1 rounded-lg">
+                      <span className="text-orange-700 font-medium">IGTF (3%):</span>
+                      <span className="font-bold text-orange-700">
+                        + Bs. {refTotals.igtf_amount.toLocaleString('es-VE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Total a pagar VES - MÁS PROMINENTE */}
+                  <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-xl p-3 mt-2">
+                    <div className="flex items-end justify-between text-white">
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wide opacity-90">Total a Pagar</p>
+                        <p className="text-xs opacity-75">{paymentMethod === 'efectivo' ? '✅ Sin IGTF' : '⚠️ Incluye IGTF 3%'}</p>
+                      </div>
+                      <p className="text-3xl font-black">
+                        Bs. {refTotals.total_amount.toLocaleString('es-VE', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2
+                        })}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Items count */}
+                  <div className="text-center text-xs text-gray-500 mt-2">
+                    {cart.length} productos en el carrito
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Legacy Totals (fallback when REF not available) */}
+            {!refTotals && (
+              <div className="px-4 py-3 bg-white border-b border-gray-200">
+                <div className="flex items-end justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 uppercase tracking-wide">Total a pagar</p>
+                    <p className="text-3xl font-bold text-gray-900">{formatCurrency(total)}</p>
+                  </div>
+                  <div className="text-right text-xs text-gray-500">
+                    {taxableBase > 0 && <p>Base: {formatCurrency(taxableBase)}</p>}
+                    {exemptAmount > 0 && <p className="text-green-600">Exento: {formatCurrency(exemptAmount)}</p>}
+                    <p>IVA: {formatCurrency(tax)}</p>
+                    <p className="font-medium text-gray-900">{cart.length} items</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Loading indicator for REF */}
+            {loadingRef && (
+              <div className="px-4 py-2 bg-blue-50 border-b border-blue-200 flex items-center justify-center">
+                <Loader2 className="w-4 h-4 animate-spin text-blue-600 mr-2" />
+                <span className="text-xs text-blue-700">Calculando precios REF...</span>
+              </div>
+            )}
 
             {/* Botón de cobrar prominente */}
             <div className="p-4">

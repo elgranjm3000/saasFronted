@@ -63,6 +63,34 @@ const CustomersPage = () => {
     }
   };
 
+  // ✅ SISTEMA ESCRITORIO: Obtener etiqueta de tipo fiscal
+  const getFiscalTypeLabel = (name_fiscal?: number) => {
+    const types: Record<number, string> = {
+      0: 'Ordinario',
+      1: 'No Contribuyente',
+      2: 'Formal',
+    };
+    return types[name_fiscal || 0] || 'Ordinario';
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener etiqueta de tipo de cliente
+  const getClientTypeLabel = (client_type?: string) => {
+    const types: Record<string, string> = {
+      '01': 'Jurídico',
+      '02': 'Natural',
+      '03': 'Gobierno',
+    };
+    return types[client_type || '01'] || 'Jurídico';
+  };
+
+  // ✅ SISTEMA ESCRITORIO: Obtener estado del cliente
+  const getCustomerStatus = (customer: Customer) => {
+    if (customer.status === '02' || customer.is_active === false) {
+      return { color: 'text-red-600', bg: 'bg-red-100', label: 'Inactivo' };
+    }
+    return { color: 'text-green-600', bg: 'bg-green-100', label: 'Activo' };
+  };
+
   const filteredCustomers = customers
     .filter(customer => {
       return customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -92,6 +120,8 @@ const CustomersPage = () => {
   };
 
   const CustomerCard = ({ customer }: { customer: Customer }) => {
+    const customerStatus = getCustomerStatus(customer);
+
     return (
       <div className="group bg-white/80 backdrop-blur-sm rounded-3xl p-6 border border-gray-100 hover:shadow-xl hover:shadow-gray-500/10 transition-all duration-300 hover:-translate-y-1">
         <div className="flex items-start justify-between mb-4">
@@ -111,7 +141,7 @@ const CustomersPage = () => {
             >
               <Edit className="w-4 h-4" />
             </Link>
-            <button 
+            <button
               onClick={() => handleDelete(customer.id)}
               className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
             >
@@ -119,32 +149,87 @@ const CustomersPage = () => {
             </button>
           </div>
         </div>
-        
+
         <div className="mb-4">
           <h3 className="text-lg font-medium text-gray-900 mb-2 line-clamp-2">
             {customer.name}
           </h3>
-          <div className="space-y-1">
-            <div className="flex items-center text-sm text-gray-500">
-              <Mail className="w-3 h-3 mr-2" />
-              {customer.email}
-            </div>
-            {customer.phone && (
-              <div className="flex items-center text-sm text-gray-500">
-                <Phone className="w-3 h-3 mr-2" />
-                {customer.phone}
-              </div>
+
+          {/* ✅ SISTEMA ESCRITORIO: Badges de clasificación fiscal */}
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+              {getFiscalTypeLabel(customer.name_fiscal)}
+            </span>
+            <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full">
+              {getClientTypeLabel(customer.client_type)}
+            </span>
+            {/* ✅ SISTEMA ESCRITORIO: Badges de retenciones */}
+            {customer.retention_tax_agent && (
+              <span className="inline-flex items-center px-2 py-1 bg-orange-50 text-orange-700 text-xs rounded-full border border-orange-200">
+                <span className="font-medium">IVA</span>
+              </span>
             )}
-            {customer.tax_id && (
-              <div className="flex items-center text-sm text-gray-500">
-                <Hash className="w-3 h-3 mr-2" />
-                {customer.tax_id}
-              </div>
+            {customer.retention_municipal_agent && (
+              <span className="inline-flex items-center px-2 py-1 bg-teal-50 text-teal-700 text-xs rounded-full border border-teal-200">
+                <span className="font-medium">Municipal</span>
+              </span>
+            )}
+            {customer.retention_islr_agent && (
+              <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full border border-blue-200">
+                <span className="font-medium">ISLR</span>
+              </span>
             )}
           </div>
         </div>
-        
-    
+
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center text-sm text-gray-500">
+            <Mail className="w-3 h-3 mr-2" />
+            {customer.email}
+          </div>
+          {customer.phone && (
+            <div className="flex items-center text-sm text-gray-500">
+              <Phone className="w-3 h-3 mr-2" />
+              {customer.phone}
+            </div>
+          )}
+          {customer.tax_id && (
+            <div className="flex items-center text-sm text-gray-500">
+              <Hash className="w-3 h-3 mr-2" />
+              {customer.tax_id}
+            </div>
+          )}
+          {/* ✅ SISTEMA ESCRITORIO: Mostrar contacto si existe */}
+          {customer.contact_name && (
+            <div className="flex items-center text-sm text-gray-500">
+              <UserCheck className="w-3 h-3 mr-2" />
+              {customer.contact_name}
+            </div>
+          )}
+        </div>
+
+        {/* ✅ SISTEMA ESCRITORIO: Mostrar información de crédito */}
+        {(customer.credit_days > 0 || customer.credit_limit > 0) && (
+          <div className="mb-4 p-3 bg-green-50 rounded-xl">
+            {customer.credit_days > 0 && (
+              <p className="text-xs text-green-700">
+                Crédito: {customer.credit_days} días
+              </p>
+            )}
+            {customer.credit_limit > 0 && (
+              <p className="text-xs text-green-700">
+                Límite: ${customer.credit_limit.toLocaleString()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ✅ SISTEMA ESCRITORIO: Estado del cliente */}
+        <div className="flex items-center justify-between">
+          <span className={`px-3 py-1 text-sm rounded-full ${customerStatus.bg} ${customerStatus.color}`}>
+            {customerStatus.label}
+          </span>
+        </div>
       </div>
     );
   };
@@ -298,64 +383,126 @@ const CustomersPage = () => {
                     <input type="checkbox" className="rounded border-gray-300" />
                   </th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Cliente</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Columna Tipo Fiscal */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Tipo Fiscal</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Columna Retenciones */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Retenciones</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Email</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Teléfono</th>
+                  {/* ✅ SISTEMA ESCRITORIO: Columna Crédito */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Crédito</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Tax ID</th>
-                  
+                  {/* ✅ SISTEMA ESCRITORIO: Columna Estado */}
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Estado</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredCustomers.map((customer) => (
-                  <tr key={customer.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-4 px-6">
-                      <input type="checkbox" className="rounded border-gray-300" />
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mr-4">
-                          <Users className="w-6 h-6 text-blue-600" />
+                {filteredCustomers.map((customer) => {
+                  const customerStatus = getCustomerStatus(customer);
+                  return (
+                    <tr key={customer.id} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="py-4 px-6">
+                        <input type="checkbox" className="rounded border-gray-300" />
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-2xl flex items-center justify-center mr-4">
+                            <Users className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{customer.name}</p>
+                            <p className="text-sm text-gray-500">ID: {customer.id}</p>
+                            {/* ✅ SISTEMA ESCRITORIO: Mostrar contacto si existe */}
+                            {customer.contact_name && (
+                              <p className="text-xs text-gray-400">Contacto: {customer.contact_name}</p>
+                            )}
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">{customer.name}</p>
-                          <p className="text-sm text-gray-500">ID: {customer.id}</p>
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Tipo Fiscal */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-wrap gap-1">
+                          <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                            {getFiscalTypeLabel(customer.name_fiscal)}
+                          </span>
+                          <span className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded">
+                            {getClientTypeLabel(customer.client_type)}
+                          </span>
                         </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      {customer.email}
-                    </td>
-                    <td className="py-4 px-6 text-gray-900">
-                      {customer.phone || '-'}
-                    </td>
-                    <td className="py-4 px-6 text-gray-900 font-mono text-sm">
-                      {customer.tax_id || '-'}
-                    </td>
-                   
-                    <td className="py-4 px-6">
-                      <div className="flex items-center space-x-2">
-                        <Link
-                          href={`/customers/${customer.id}`}
-                          className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Link>
-                        <Link
-                          href={`/customers/${customer.id}/edit`}
-                          className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Link>
-                        <button 
-                          onClick={() => handleDelete(customer.id)}
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Retenciones */}
+                      <td className="py-4 px-6">
+                        <div className="flex flex-wrap gap-1">
+                          {customer.retention_tax_agent && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-orange-50 text-orange-700 text-xs rounded border border-orange-200">IVA</span>
+                          )}
+                          {customer.retention_municipal_agent && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-teal-50 text-teal-700 text-xs rounded border border-teal-200">Mun</span>
+                          )}
+                          {customer.retention_islr_agent && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 bg-blue-50 text-blue-700 text-xs rounded border border-blue-200">ISLR</span>
+                          )}
+                          {!customer.retention_tax_agent && !customer.retention_municipal_agent && !customer.retention_islr_agent && (
+                            <span className="text-gray-400 text-xs">-</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 text-sm">
+                        {customer.email}
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 text-sm">
+                        {customer.phone || '-'}
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Crédito */}
+                      <td className="py-4 px-6 text-sm">
+                        {(customer.credit_days > 0 || customer.credit_limit > 0) ? (
+                          <div>
+                            {customer.credit_days > 0 && (
+                              <p className="text-gray-900">{customer.credit_days} días</p>
+                            )}
+                            {customer.credit_limit > 0 && (
+                              <p className="text-xs text-gray-500">${customer.credit_limit.toLocaleString()}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-xs">-</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-gray-900 font-mono text-sm">
+                        {customer.tax_id || '-'}
+                      </td>
+                      {/* ✅ SISTEMA ESCRITORIO: Columna Estado */}
+                      <td className="py-4 px-6">
+                        <span className={`px-3 py-1 text-sm rounded-full ${customerStatus.bg} ${customerStatus.color}`}>
+                          {customerStatus.label}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        <div className="flex items-center space-x-2">
+                          <Link
+                            href={`/customers/${customer.id}`}
+                            className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href={`/customers/${customer.id}/edit`}
+                            className="p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-xl transition-colors"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Link>
+                          <button
+                            onClick={() => handleDelete(customer.id)}
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
