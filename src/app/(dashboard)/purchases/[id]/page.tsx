@@ -187,7 +187,7 @@ ${purchase.supplier?.email || ''}
 ${purchase.supplier?.phone || ''}
 ${purchase.supplier?.address || ''}
 
-ALMACÉN
+DEPÓSITO
 -------
 ${purchase.warehouse?.name || 'N/A'}
 ${purchase.warehouse?.location || ''}
@@ -398,7 +398,7 @@ Notas: ${purchase.notes || 'N/A'}
                 <div>
                   <h3 className="text-sm font-medium text-gray-700 mb-4 flex items-center">
                     <Package className="w-4 h-4 mr-2" />
-                    Almacén
+                    Depósito
                   </h3>
                   <div className="space-y-3">
                     <div className="flex items-center">

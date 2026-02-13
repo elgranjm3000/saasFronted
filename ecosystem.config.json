@@ -1,0 +1,10 @@
+{
+  "apps": [{
+    "name": "saas-frontend",
+    "script": "/home/saas/node_modules/.bin/next",
+    "cwd": "/home/saas",
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }]
+}

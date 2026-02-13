@@ -69,7 +69,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
       setWarehouse(response.data);
     } catch (error: any) {
       console.error('Error fetching warehouse:', error);
-      setError('Error al cargar el almacén');
+      setError('Error al cargar el depósito');
     } finally {
       setLoading(false);
     }
@@ -100,14 +100,14 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
 
   const handleDelete = async () => {
     if (!warehouse) return;
-    
-    if (window.confirm('¿Estás seguro de que quieres eliminar este almacén? Esta acción no se puede deshacer.')) {
+
+    if (window.confirm('¿Estás seguro de que quieres eliminar este depósito? Esta acción no se puede deshacer.')) {
       try {
         await warehousesAPI.delete(warehouse.id);
         router.push('/warehouses');
       } catch (error) {
         console.error('Error deleting warehouse:', error);
-        alert('Error al eliminar el almacén');
+        alert('Error al eliminar el depósito');
       }
     }
   };
@@ -160,16 +160,16 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
       <div className="p-6 lg:p-8">
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-12 text-center">
           <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-light text-gray-900 mb-2">Almacén no encontrado</h3>
+          <h3 className="text-xl font-light text-gray-900 mb-2">Depósito no encontrado</h3>
           <p className="text-gray-500 mb-6">
-            {error || 'El almacén que buscas no existe o fue eliminado.'}
+            {error || 'El depósito que buscas no existe o fue eliminado.'}
           </p>
           <Link
             href="/warehouses"
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            <span className="font-light">Volver a Almacenes</span>
+            <span className="font-light">Volver a Depósitos</span>
           </Link>
         </div>
       </div>
@@ -270,7 +270,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-light text-gray-900">Productos en este Almacén</h3>
+                <h3 className="text-xl font-light text-gray-900">Productos en este Depósito</h3>
                 <Link
                   href={`/warehouses/${warehouse.id}/products/add`}
                   className="flex items-center px-4 py-2 text-blue-600 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
@@ -347,14 +347,14 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
           {/* Additional Details */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Detalles del Almacén</h3>
+              <h3 className="text-xl font-light text-gray-900">Detalles del Depósito</h3>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-center">
                   <Hash className="w-5 h-5 text-gray-400 mr-3" />
                   <div>
-                    <p className="text-sm text-gray-500">ID del Almacén</p>
+                    <p className="text-sm text-gray-500">ID del Depósito</p>
                     <p className="font-medium text-gray-900">{warehouse.id}</p>
                   </div>
                 </div>
@@ -444,7 +444,7 @@ const WarehouseDetailPage = ({ params }: WarehouseDetailPageProps) => {
                 <div className="flex items-start space-x-3">
                   <div className="w-2 h-2 bg-blue-400 rounded-full mt-2"></div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">Almacén creado</p>
+                    <p className="text-sm font-medium text-gray-900">Depósito creado</p>
                     <p className="text-xs text-gray-500">Hace 2 días</p>
                   </div>
                 </div>

@@ -154,12 +154,6 @@ const POSPage = () => {
       ]);
       setCustomers(customersRes.data || []);
       setWarehouses(warehousesRes.data || []);
-
-      // Auto-select first warehouse if available
-      if (warehousesRes.data && warehousesRes.data.length > 0) {
-        const firstWarehouse = warehousesRes.data[0];
-        setSelectedWarehouse(firstWarehouse);
-      }
     } catch (error) {
       console.error('Error fetching data:', error);
       setErrors({ general: 'Error al cargar los datos' });
@@ -288,7 +282,7 @@ const POSPage = () => {
     }
 
     if (!selectedWarehouse) {
-      setErrors({ warehouse: 'Debes seleccionar un almacén' });
+      setErrors({ warehouse: 'Debes seleccionar un depósito' });
       return;
     }
 
@@ -679,7 +673,7 @@ const POSPage = () => {
                 }`}
               >
                 <span className={selectedWarehouse ? 'text-gray-900 font-medium text-xs' : 'text-gray-400 text-xs'}>
-                  {selectedWarehouse ? selectedWarehouse.name : 'Almacén...'}
+                  {selectedWarehouse ? selectedWarehouse.name : 'seleccione depósito'}
                 </span>
                 <Building2 className="w-3.5 h-3.5 text-gray-400" />
               </button>

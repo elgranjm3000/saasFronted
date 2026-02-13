@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   BarChart3,
   Package,
@@ -38,8 +39,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
   const menuItems = [
     { icon: Home, label: 'Dashboard', href: '/dashboard', active: pathname === '/dashboard' },
-    { icon: FolderTree, label: 'Categorias', href: '/categories', active: pathname.startsWith('/categories') },
-    { icon: Warehouse, label: 'Almacenes', href: '/warehouses', active: pathname.startsWith('/warehouses') },
+    { icon: FolderTree, label: 'Departamentos', href: '/categories', active: pathname.startsWith('/categories') },
+    { icon: Warehouse, label: 'Depósitos', href: '/warehouses', active: pathname.startsWith('/warehouses') },
     { icon: Package, label: 'Productos', href: '/products', active: pathname.startsWith('/products') },
     { icon: Users, label: 'Clientes', href: '/customers', active: pathname.startsWith('/customers') },
     { icon: FileText, label: 'Facturas', href: '/invoices', active: pathname.startsWith('/invoices') },
@@ -87,11 +88,18 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         {/* Sidebar Header */}
         <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
           <div className="flex items-center">
-            <div className="w-8 h-8 bg-gray-900 rounded-lg flex items-center justify-center mr-3">
-              <Building2 className="w-4 h-4 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl mb-0 mr-3 shadow-lg transform transition-transform duration-300 hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Nombre de tu SaaS"
+                width={48}
+                height={48}
+                priority
+                className="object-contain"
+              />
             </div>
             <div>
-              <span className="text-base font-semibold text-gray-900">ERP</span>
+              <span className="text-base font-semibold text-gray-900">ChrystalWeb</span>
             </div>
           </div>
           <button

@@ -329,7 +329,7 @@ const SupplierFormPage = () => {
               <div className="p-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    RUC / Tax ID
+                    RIF
                   </label>
                   <div className="relative">
                     <Hash className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -416,7 +416,7 @@ const SupplierFormPage = () => {
                 )}
                 {formData.tax_id && (
                   <div className="flex justify-between pt-3 border-t border-gray-100">
-                    <span className="text-sm text-gray-500">RUC</span>
+                    <span className="text-sm text-gray-500">RIF</span>
                     <span className="font-medium text-gray-900">
                       {formData.tax_id}
                     </span>
@@ -448,7 +448,7 @@ const SupplierFormPage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Datos fiscales</p>
                     <p className="text-xs text-gray-500">
-                      El RUC es importante para facturación
+                      El RIF es importante para facturación
                     </p>
                   </div>
                 </div>

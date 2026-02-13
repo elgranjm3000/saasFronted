@@ -376,7 +376,7 @@ const ProductFormPage = () => {
 
       const createdProduct = await response.json();
 
-      // Crear entrada en almacén si se especificó
+      // Crear entrada en depósito si se especificó
       if (formData.warehouse_id && formData.stock_quantity) {
         await fetch('/api/v1/warehouse-products', {
           method: 'POST',
@@ -677,10 +677,10 @@ const ProductFormPage = () => {
                   </select>
                 </div>
 
-                {/* Categoría (Legacy) */}
+                {/* Departamento (Legacy) */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoría (Legacy)
+                    Departamento (Legacy)
                   </label>
                   <select
                     name="category_id"
@@ -1053,10 +1053,10 @@ const ProductFormPage = () => {
                   />
                 </div>
 
-                {/* Almacén */}
+                {/* Depósito */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Almacén
+                    Depósito
                   </label>
                   <select
                     name="warehouse_id"

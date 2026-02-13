@@ -369,7 +369,7 @@ const InvoiceFormPage = () => {
     }
 
     if (!formData.warehouse_id) {
-      newErrors.warehouse = 'Debes seleccionar un almacén';
+      newErrors.warehouse = 'Debes seleccionar un depósito';
     }
 
     if (formData.items.length === 0) {
@@ -629,7 +629,7 @@ const InvoiceFormPage = () => {
                 {/* Warehouse Selection */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Almacén *
+                    Depósito *
                   </label>
                   <div className="relative">
                     <button
@@ -640,7 +640,7 @@ const InvoiceFormPage = () => {
                       }`}
                     >
                       <span className={selectedWarehouseName ? 'text-gray-900' : 'text-gray-400'}>
-                        {selectedWarehouseName || 'Seleccionar almacén...'}
+                        {selectedWarehouseName || 'Seleccionar depósito...'}
                       </span>
                       <ChevronDown className="w-4 h-4" />
                     </button>

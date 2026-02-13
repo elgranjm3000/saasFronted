@@ -64,7 +64,7 @@ const WarehouseFormPage = () => {
       });
     } catch (error) {
       console.error('Error fetching warehouse:', error);
-      setErrors({ general: 'Error al cargar el almacén' });
+      setErrors({ general: 'Error al cargar el depósito' });
     } finally {
       setInitialLoading(false);
     }
@@ -90,7 +90,7 @@ const WarehouseFormPage = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del almacén es requerido';
+      newErrors.name = 'El nombre del depósito es requerido';
     }
 
     if (!formData.location.trim()) {
@@ -137,7 +137,7 @@ const WarehouseFormPage = () => {
       if (error.response?.data?.detail) {
         setErrors({ general: error.response.data.detail });
       } else {
-        setErrors({ general: 'Error al guardar el almacén. Inténtalo de nuevo.' });
+        setErrors({ general: 'Error al guardar el depósito. Inténtalo de nuevo.' });
       }
     } finally {
       setLoading(false);
@@ -168,10 +168,10 @@ const WarehouseFormPage = () => {
             </Link>
             <div>
               <h1 className="text-3xl font-light text-gray-900 mb-2">
-                {isEdit ? 'Editar Almacén' : 'Nuevo Almacén'}
+                {isEdit ? 'Editar Depósito' : 'Nuevo Depósito'}
               </h1>
               <p className="text-gray-500 font-light">
-                {isEdit ? 'Modifica la información del almacén' : 'Completa la información para crear un nuevo almacén'}
+                {isEdit ? 'Modifica la información del depósito' : 'Completa la información para crear un nuevo depósito'}
               </p>
             </div>
           </div>
@@ -184,7 +184,7 @@ const WarehouseFormPage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              {isEdit ? 'Almacén actualizado correctamente' : 'Almacén creado correctamente'}
+              {isEdit ? 'Depósito actualizado correctamente' : 'Depósito creado correctamente'}
             </p>
           </div>
         </div>
@@ -212,7 +212,7 @@ const WarehouseFormPage = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Nombre del Almacén *
+                    Nombre del Depósito *
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -224,7 +224,7 @@ const WarehouseFormPage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.name ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="Ej: Almacén Central"
+                      placeholder="Ej: Depósito Central"
                     />
                   </div>
                   {errors.name && (
@@ -275,7 +275,7 @@ const WarehouseFormPage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Almacén' : 'Crear Almacén'}
+                  {loading ? 'Guardando...' : isEdit ? 'Actualizar Depósito' : 'Crear Depósito'}
                 </span>
               </button>
             </div>
@@ -295,7 +295,7 @@ const WarehouseFormPage = () => {
                   <Building2 className="w-12 h-12 text-blue-600" />
                 </div>
                 <h4 className="font-medium text-gray-900 mb-1">
-                  {formData.name || 'Nombre del almacén'}
+                  {formData.name || 'Nombre del depósito'}
                 </h4>
                 <p className="text-sm text-gray-500 flex items-center justify-center">
                   <MapPin className="w-4 h-4 mr-1" />
@@ -310,7 +310,7 @@ const WarehouseFormPage = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-gray-500">Tipo</span>
-                  <span className="font-medium text-gray-900">Almacén</span>
+                  <span className="font-medium text-gray-900">Depósito</span>
                 </div>
               </div>
             </div>
@@ -328,7 +328,7 @@ const WarehouseFormPage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Nombre descriptivo</p>
                     <p className="text-xs text-gray-500">
-                      Usa un nombre que identifique fácilmente la función del almacén
+                      Usa un nombre que identifique fácilmente la función del depósito
                     </p>
                   </div>
                 </div>

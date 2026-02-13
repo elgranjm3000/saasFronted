@@ -4,6 +4,8 @@ import { Eye, EyeOff, Building2, User, Lock, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/auth-store';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api';
+import Image from 'next/image';
+
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -94,9 +96,16 @@ export default function LoginPage() {
         <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl border border-gray-100 overflow-hidden">
           {/* Header */}
           <div className="px-8 pt-12 pb-8 text-center">
-            <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl mb-6 shadow-lg transform transition-transform duration-300 hover:scale-105">
-              <Building2 className="w-9 h-9 text-white" />
-            </div>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-6 shadow-lg transform transition-transform duration-300 hover:scale-105">
+	<Image
+        src="/logo.png"
+        alt="Nombre de tu SaaS"
+        width={150} // Ajusta según el diseño
+        height={50} // Ajusta según el diseño
+        priority    // ¡Importante para el logo!
+        className="object-contain"
+      />
+          </div>
             
             <h1 className="text-3xl font-light text-gray-900 mb-3">
               Bienvenido
@@ -138,7 +147,7 @@ export default function LoginPage() {
               {/* Company Tax ID Field */}
               <div className="group">
                 <label className="block text-xs font-medium text-gray-600 mb-3 uppercase tracking-wider">
-                  NIT/RUC Empresa
+                  RIF Empresa
                 </label>
                 <div className={`relative transition-all duration-200 ${
                   focusedField === 'company_tax_id' ? 'transform scale-[1.01]' : ''

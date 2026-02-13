@@ -145,7 +145,7 @@ const DashboardPage = () => {
           {/* Products by Category Chart */}
           <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-xl font-light text-gray-900">Productos por Categoría</h3>
+              <h3 className="text-xl font-light text-gray-900">Productos por Departamento</h3>
             </div>
             <div className="p-6">
               <ResponsiveContainer width="100%" height={300}>

@@ -199,7 +199,7 @@ export const useProductStats = (): UseProductStatsReturn => {
       const lowStock = products.filter(p => p.quantity <= 10 && p.quantity > 0).length;
       const outOfStock = products.filter(p => p.quantity === 0).length;
       
-      // Calcular categorías más populares
+      // Calcular departamentos más populares
       const categoryCount: Record<string, number> = {};
       products.forEach(product => {
         if (product.category) {
@@ -301,7 +301,7 @@ export const useProductFilters = (products: Product[]): UseProductFiltersReturn 
       );
     }
 
-    // Filtro de categoría
+    // Filtro de departamento
     if (filters.category) {
       filtered = filtered.filter(product =>
         product.category?.name === filters.category

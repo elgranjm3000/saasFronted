@@ -1,0 +1,19 @@
+
+> erp-frontend@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.0
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+ ✓ Ready in 2.8s
+ ○ Compiling /src/middleware ...
+ ✓ Compiled /src/middleware in 696ms (56 modules)
+🔍 Middleware: { path: '/', hasToken: false, tokenPreview: 'none' }
+✅ Middleware: Public path, allowing access
+ ○ Compiling /page ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ✓ Compiled /page in 6.3s (498 modules)
+Missing `origin` header from a forwarded Server Actions request.
+Failed to find Server Action "x". This request might be from an older or newer deployment.
+ ✓ Compiled in 632ms (241 modules)

@@ -67,13 +67,13 @@ const WarehousesPage = () => {
   };
 
   const handleDelete = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar este almacén? Esta acción no se puede deshacer.')) {
+    if (window.confirm('¿Estás seguro de que quieres eliminar este depósito? Esta acción no se puede deshacer.')) {
       try {
         await warehousesAPI.delete(id);
         setWarehouses(warehouses.filter(w => w.id !== id));
       } catch (error) {
         console.error('Error deleting warehouse:', error);
-        alert('Error al eliminar el almacén');
+        alert('Error al eliminar el depósito');
       }
     }
   };
@@ -169,7 +169,7 @@ const WarehousesPage = () => {
       <div className="mb-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-3xl font-light text-gray-900 mb-3">Almacenes</h1>
+            <h1 className="text-3xl font-light text-gray-900 mb-3">Depósitos</h1>
             <p className="text-gray-500 font-light text-lg">
               Gestiona tus ubicaciones de almacenamiento e inventario
             </p>
@@ -188,7 +188,7 @@ const WarehousesPage = () => {
               className="flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
             >
               <Plus className="w-4 h-4 mr-2" />
-              <span className="font-light">Nuevo Almacén</span>
+              <span className="font-light">Nuevo Depósito</span>
             </Link>
           </div>
         </div>
@@ -199,7 +199,7 @@ const WarehousesPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">
-                  Total Almacenes
+                  Total Depósitos
                 </p>
                 <p className="text-2xl font-light text-gray-900">{stats.total}</p>
               </div>
@@ -233,7 +233,7 @@ const WarehousesPage = () => {
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Buscar almacenes por nombre o ubicación..."
+                placeholder="Buscar depósitos por nombre o ubicación..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none"
@@ -310,7 +310,7 @@ const WarehousesPage = () => {
                   <th className="text-left py-4 px-6 font-medium text-gray-700">
                     <input type="checkbox" className="rounded border-gray-300" />
                   </th>
-                  <th className="text-left py-4 px-6 font-medium text-gray-700">Almacén</th>
+                  <th className="text-left py-4 px-6 font-medium text-gray-700">Depósito</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Dirección</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">ID</th>
                   <th className="text-left py-4 px-6 font-medium text-gray-700">Stock Bajo</th>
@@ -387,7 +387,7 @@ const WarehousesPage = () => {
             <div className="flex items-center justify-between">
               <p className="text-sm text-gray-600 font-light">
                 Mostrando <span className="font-medium">1</span> a <span className="font-medium">{filteredWarehouses.length}</span> de{' '}
-                <span className="font-medium">{filteredWarehouses.length}</span> almacenes
+                <span className="font-medium">{filteredWarehouses.length}</span> depósitos
               </p>
               <div className="flex items-center space-x-2">
                 <button className="px-4 py-2 text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-light">
@@ -408,16 +408,16 @@ const WarehousesPage = () => {
       {filteredWarehouses.length === 0 && !loading && (
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-12 text-center">
           <Building2 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-xl font-light text-gray-900 mb-2">No hay almacenes</h3>
+          <h3 className="text-xl font-light text-gray-900 mb-2">No hay depósitos</h3>
           <p className="text-gray-500 mb-6">
-            {searchTerm ? 'No se encontraron almacenes con ese término de búsqueda.' : 'Comienza agregando tu primer almacén.'}
+            {searchTerm ? 'No se encontraron depósitos con ese término de búsqueda.' : 'Comienza agregando tu primer depósito.'}
           </p>
           <Link
             href="/warehouses/new"
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl hover:from-blue-600 hover:to-blue-700 transition-all transform hover:scale-[1.02] shadow-lg"
           >
             <Plus className="w-4 h-4 mr-2" />
-            <span className="font-light">Agregar Almacén</span>
+            <span className="font-light">Agregar Depósito</span>
           </Link>
         </div>
       )}

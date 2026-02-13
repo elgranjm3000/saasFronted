@@ -196,7 +196,7 @@ const CustomerDetailPage = ({ params }: CustomerDetailPageProps) => {
                   <div className="flex items-center">
                     <Hash className="w-5 h-5 text-gray-400 mr-3" />
                     <div>
-                      <p className="text-sm text-gray-500">Tax ID / RUC</p>
+                      <p className="text-sm text-gray-500">RIF</p>
                       <p className="font-medium text-gray-900 font-mono">{customer.tax_id}</p>
                     </div>
                   </div>

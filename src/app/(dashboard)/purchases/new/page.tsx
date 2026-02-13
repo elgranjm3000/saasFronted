@@ -282,7 +282,7 @@ const NewPurchasePage = () => {
     }
 
     if (!formData.warehouse_id) {
-      newErrors.warehouse = 'Debes seleccionar un almacén';
+      newErrors.warehouse = 'Debes seleccionar un depósito';
     }
 
     if (formData.items.length === 0) {
@@ -351,7 +351,7 @@ const NewPurchasePage = () => {
 
     // Verificar explícitamente que los campos requeridos no sean null
     if (!formData.supplier_id || !formData.warehouse_id) {
-      setErrors({ general: 'Por favor selecciona un proveedor y un almacén' });
+      setErrors({ general: 'Por favor selecciona un proveedor y un depósito' });
       return;
     }
 
@@ -557,7 +557,7 @@ const NewPurchasePage = () => {
                   {/* Warehouse Selection */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Almacén <span className="text-red-500">*</span>
+                      Depósito <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
                       <button
@@ -566,7 +566,7 @@ const NewPurchasePage = () => {
                         className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/60 rounded-2xl focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-100 transition-all outline-none text-left flex items-center justify-between"
                       >
                         <span className={selectedWarehouseName ? 'text-gray-900' : 'text-gray-400'}>
-                          {selectedWarehouseName || 'Seleccionar almacén...'}
+                          {selectedWarehouseName || 'Seleccionar depósito...'}
                         </span>
                         <Package className="w-5 h-5 text-gray-400" />
                       </button>
@@ -587,7 +587,7 @@ const NewPurchasePage = () => {
                             ))
                           ) : (
                             <div className="px-4 py-3 text-sm text-gray-500 text-center">
-                              No hay almacenes disponibles
+                              No hay depósitos disponibles
                             </div>
                           )}
                         </div>
@@ -834,7 +834,7 @@ const NewPurchasePage = () => {
                       if (formData.warehouse_id) {
                         setShowProductSearch(!showProductSearch);
                       } else {
-                        setErrors({ warehouse: 'Selecciona un almacén primero' });
+                        setErrors({ warehouse: 'Selecciona un depósito primero' });
                       }
                     }}
                     className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors"
@@ -908,7 +908,7 @@ const NewPurchasePage = () => {
                         <div className="px-4 py-8 text-center">
                           <Package className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                           <p className="text-gray-500">
-                            {productSearch ? 'No se encontraron productos' : 'No hay productos disponibles en este almacén'}
+                            {productSearch ? 'No se encontraron productos' : 'No hay productos disponibles en este depósito'}
                           </p>
                         </div>
                       )}
@@ -1061,7 +1061,7 @@ const NewPurchasePage = () => {
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">•</span>
-                    <span>Los productos son específicos por almacén</span>
+                    <span>Los productos son específicos por depósito</span>
                   </li>
                   <li className="flex items-start">
                     <span className="mr-2">•</span>

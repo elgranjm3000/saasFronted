@@ -51,7 +51,7 @@ const NewWarehousePage = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
-      newErrors.name = 'El nombre del almacén es requerido';
+      newErrors.name = 'El nombre del depósito es requerido';
     }
 
     if (!formData.location.trim()) {
@@ -89,7 +89,7 @@ const NewWarehousePage = () => {
       if (error.response?.data?.detail) {
         setErrors({ general: error.response.data.detail });
       } else {
-        setErrors({ general: 'Error al crear el almacén. Inténtalo de nuevo.' });
+        setErrors({ general: 'Error al crear el depósito. Inténtalo de nuevo.' });
       }
     } finally {
       setLoading(false);
@@ -109,9 +109,9 @@ const NewWarehousePage = () => {
               <ArrowLeft className="w-5 h-5" />
             </Link>
             <div>
-              <h1 className="text-3xl font-light text-gray-900 mb-2">Nuevo Almacén</h1>
+              <h1 className="text-3xl font-light text-gray-900 mb-2">Nuevo Depósito</h1>
               <p className="text-gray-500 font-light">
-                Completa la información para crear un nuevo almacén
+                Completa la información para crear un nuevo depósito
               </p>
             </div>
           </div>
@@ -124,7 +124,7 @@ const NewWarehousePage = () => {
           <div className="flex items-center">
             <CheckCircle className="w-5 h-5 text-green-600 mr-3" />
             <p className="text-green-600 font-medium">
-              Almacén creado correctamente
+              Depósito creado correctamente
             </p>
           </div>
         </div>
@@ -152,7 +152,7 @@ const NewWarehousePage = () => {
               <div className="p-6 space-y-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Nombre del Almacén *
+                    Nombre del Depósito *
                   </label>
                   <div className="relative">
                     <Building2 className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -164,7 +164,7 @@ const NewWarehousePage = () => {
                       className={`w-full pl-12 pr-4 py-3 bg-gray-50/80 border rounded-2xl focus:bg-white focus:ring-4 focus:ring-blue-100 transition-all outline-none ${
                         errors.name ? 'border-red-300 focus:border-red-400' : 'border-gray-200/60 focus:border-blue-300'
                       }`}
-                      placeholder="Ej: Almacén Central"
+                      placeholder="Ej: Depósito Central"
                     />
                   </div>
                   {errors.name && (
@@ -216,7 +216,7 @@ const NewWarehousePage = () => {
                   <Save className="w-4 h-4 mr-2" />
                 )}
                 <span className="font-light">
-                  {loading ? 'Guardando...' : 'Crear Almacén'}
+                  {loading ? 'Guardando...' : 'Crear Depósito'}
                 </span>
               </button>
             </div>
@@ -236,7 +236,7 @@ const NewWarehousePage = () => {
                   <Building2 className="w-12 h-12 text-blue-600" />
                 </div>
                 <h4 className="font-medium text-gray-900 mb-1">
-                  {formData.name || 'Nombre del almacén'}
+                  {formData.name || 'Nombre del depósito'}
                 </h4>
                 <p className="text-sm text-gray-500 flex items-center justify-center">
                   <MapPin className="w-4 h-4 mr-1" />
@@ -265,7 +265,7 @@ const NewWarehousePage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Nombre descriptivo</p>
                     <p className="text-xs text-gray-500">
-                      Usa un nombre que identifique fácilmente la función del almacén
+                      Usa un nombre que identifique fácilmente la función del depósito
                     </p>
                   </div>
                 </div>
@@ -295,7 +295,7 @@ const NewWarehousePage = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-900">Próximos pasos</p>
                     <p className="text-xs text-gray-500">
-                      Después de crear el almacén, podrás agregar productos
+                      Después de crear el depósito, podrás agregar productos
                     </p>
                   </div>
                 </div>
@@ -312,7 +312,7 @@ const NewWarehousePage = () => {
               <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-center">
                   <div className="w-6 h-6 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-medium mr-3">1</div>
-                  <span>Crea el almacén con nombre y ubicación</span>
+                  <span>Crea el depósito con nombre y ubicación</span>
                 </div>
                 <div className="flex items-center">
                   <div className="w-6 h-6 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center text-xs font-medium mr-3">2</div>

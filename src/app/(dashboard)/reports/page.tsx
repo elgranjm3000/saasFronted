@@ -444,7 +444,7 @@ const ReportsPage = () => {
 
         {/* Warehouse Overview */}
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl border border-gray-100 p-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-6">Resumen de Almacenes</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-6">Resumen de Depósitos</h2>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl">
@@ -453,7 +453,7 @@ const ReportsPage = () => {
                   <Package className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">Total Almacenes</p>
+                  <p className="font-medium text-gray-900">Total Depósitos</p>
                   <p className="text-sm text-gray-500">Ubicaciones activas</p>
                 </div>
               </div>
